@@ -1,0 +1,36 @@
+# Deep Learning - U-Net Road Segmentation Project
+# Requirements for satellite road segmentation using PyTorch
+
+# Core Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+Pillow>=9.5.0
+opencv-python>=4.7.0
+
+# Data Augmentation
+albumentations>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+tqdm>=4.65.0
+
+# Metrics
+scikit-learn>=1.2.0
+
+# Jupyter Support
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# Experiment Tracking (optional)
+tensorboard>=2.12.0
+
+# PDF extraction (for reading project description)
+pdfminer.six>=20221105
+
+# Utilities
+PyYAML>=6.0
