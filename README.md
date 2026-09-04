@@ -116,6 +116,64 @@ python inference.py --model baseline --checkpoint outputs/checkpoints/baseline_b
 python inference.py --model attention --checkpoint outputs/checkpoints/attention_best.pt --input images/
 ```
 
+## 🧪 Real-Only Cross-Validation Protocol (journal revision)
+
+The original `train.py` pipeline drew its validation split from the pooled real
++ synthetic images, so validation scores for the "expanded" condition were
+dominated by synthetic images. The `experiments/` package replaces that with a
+protocol where **synthetic images can only ever appear in training**:
+
+| Piece | What it does |
+|---|---|
+| `utils/splits.py` | Freezes a stratified split of the 100 real images: 20 test images (never used for training, model selection or scoring) and 5 folds of 16 over the remaining 80. Written once to `splits/real_splits.json`. |
+| `experiments/train_run.py` | Trains one (arch, fold, seed, condition) cell for a **fixed number of optimizer steps** (same budget for every condition) and reports per-image metrics on the real validation fold and the real test set. |
+| `experiments/score_synthetic.py` | The proposed filter: runs the real-only seed models of a fold on every synthetic image and scores each by inter-seed disagreement (plus label disagreement, probability variance, road fraction). |
+| `experiments/run_cv.py` | Driver for the full grid, resumable (skips cells with an existing `result.json`). |
+| `experiments/aggregate.py` | Mean ± std, 95% CI, seed sensitivity and paired Wilcoxon / t-tests between conditions. |
+
+Conditions per (arch, fold, seed): `real` (64 real only), `all` (real + 1,003 synthetic),
+`random` (real + k random synthetic), `filtered` (real + k lowest-disagreement synthetic),
+`antifiltered` (real + k highest-disagreement synthetic, a sanity control).
+
+```bash
+# 1. create the frozen splits and inspect them
+python -m utils.splits --data data
+
+# 2. run everything (2 archs x 5 folds x 3 seeds x 5 conditions = 150 runs), resumable
+python -m experiments.run_cv --k 250
+
+# pilot on one fold first
+python -m experiments.run_cv --folds 0 --k 250
+
+# dose-response over subset size
+python -m experiments.run_cv --k 100 250 500
+
+# 3. tables and paired tests
+python -m experiments.aggregate --results results
+```
+
+Each run writes `results/runs/<name>/result.json`, `per_image_test.csv` and the
+best-on-validation checkpoint. Scores are in `results/scores/<arch>_f<fold>.csv`.
+Use `--max-steps` to change the shared optimizer budget (default 3000 steps of
+batch 8) and `--pool-archs` to score synthetic images with both architectures'
+seed models pooled. `notebooks/CV_Experiments_Colab.ipynb` runs the same
+commands on Colab.
+
+### Running unattended
+
+`scripts/run_budget.sh <results_dir> [max_steps] [stages]` runs the whole budgeted plan
+(stages `core,all` by default; add `baseline`, `anti`, `dose`) and aggregates at the end.
+It is resumable, so re-launching after an interruption continues where it stopped.
+
+* **Kaggle (free, true background):** open `notebooks/CV_Experiments_Kaggle.ipynb`, attach the
+  Kaggle dataset, enable GPU + Internet, then *Save & Run All (Commit)*. Kaggle runs it on its own
+  servers and stores `results/` as the notebook output.
+* **Colab:** `notebooks/CV_Experiments_Colab.ipynb` has a `nohup` cell that launches the script and
+  returns immediately; results go to Drive. The session must stay alive (Colab Pro+ offers
+  background execution).
+* **Any rented GPU box (RunPod, Lambda, Vast):** `tmux new -s exp` then
+  `bash scripts/run_budget.sh results`, detach, come back later.
+
 ## 📊 Model Architecture
 
 ### Baseline U-Net

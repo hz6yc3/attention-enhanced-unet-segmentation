@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+outputs/
+results/runs/*/best.pt
+results/runs/*/per_image_val.csv

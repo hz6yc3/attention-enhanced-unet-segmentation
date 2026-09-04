@@ -240,3 +240,41 @@ if __name__ == "__main__":
     print(f"Average metrics: {tracker}")
     
     print("\nMetrics module test completed!")
+
+
+def per_image_metrics(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    threshold: float = 0.5,
+    smooth: float = 1e-6
+) -> dict:
+    """
+    Per-image Dice, IoU, precision, recall and accuracy for a batch.
+
+    Unlike MetricTracker (which averages batch-level scores), this returns one
+    value per image so results can be paired across runs and tested
+    statistically. Inputs are probabilities in [0, 1] and binary targets,
+    both shaped (B, 1, H, W).
+
+    Returns:
+        dict of 1-D numpy arrays of length B, plus 'tp', 'fp', 'fn' pixel counts
+        so that pooled (dataset-level) metrics can be reconstructed exactly.
+    """
+    with torch.no_grad():
+        p = (pred > threshold).float().flatten(1)
+        t = target.float().flatten(1)
+        tp = (p * t).sum(1)
+        fp = (p * (1 - t)).sum(1)
+        fn = ((1 - p) * t).sum(1)
+        tn = ((1 - p) * (1 - t)).sum(1)
+        dice = (2 * tp + smooth) / (2 * tp + fp + fn + smooth)
+        iou = (tp + smooth) / (tp + fp + fn + smooth)
+        precision = (tp + smooth) / (tp + fp + smooth)
+        recall = (tp + smooth) / (tp + fn + smooth)
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        out = {
+            'dice': dice, 'iou': iou, 'precision': precision,
+            'recall': recall, 'accuracy': accuracy,
+            'tp': tp, 'fp': fp, 'fn': fn,
+        }
+        return {k: v.cpu().numpy() for k, v in out.items()}
