@@ -40,6 +40,7 @@ import math
 import os
 import random
 import time
+import warnings
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -60,6 +61,9 @@ from utils.splits import (
     list_synthetic_pairs,
     load_or_create_splits,
 )
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning, module="albumentations")
 
 CONDITIONS = ("real", "all", "random", "filtered", "antifiltered")
 
@@ -184,7 +188,7 @@ def make_loader(
         batch_size=cfg.batch_size,
         shuffle=train,
         drop_last=train and len(ds) >= cfg.batch_size,
-        num_workers=cfg.num_workers,
+        num_workers=min(cfg.num_workers, os.cpu_count() or 1),
         pin_memory=torch.cuda.is_available(),
         generator=gen,
         worker_init_fn=functools.partial(_seed_worker, seed),
@@ -285,7 +289,7 @@ def run_experiment(cfg: RunConfig, force: bool = False, verbose: bool = True) ->
     scheduler = optim.lr_scheduler.LambdaLR(
         optimizer, lr_lambda_factory(cfg.warmup_steps, cfg.max_steps, cfg.min_lr / cfg.learning_rate)
     )
-    scaler = torch.cuda.amp.GradScaler() if use_amp else None
+    scaler = torch.amp.GradScaler("cuda") if use_amp else None
 
     if verbose:
         print(f"[{cfg.run_name}] device={device} train={len(train_imgs)} "
@@ -306,7 +310,7 @@ def run_experiment(cfg: RunConfig, force: bool = False, verbose: bool = True) ->
         images, masks = images.to(device), masks.to(device)
         optimizer.zero_grad(set_to_none=True)
         if use_amp:
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast("cuda"):
                 loss = criterion(model(images), masks)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -357,7 +361,7 @@ def run_experiment(cfg: RunConfig, force: bool = False, verbose: bool = True) ->
     }
     with open(result_path, "w") as f:
         json.dump(result, f, indent=2)
-    if verbose:
+    if True:
         print(f"[{cfg.run_name}] done in {result['elapsed_sec']/60:.1f} min | "
               f"val dice {result['val']['dice']:.4f} | TEST dice {result['test']['dice']:.4f} "
               f"iou {result['test']['iou']:.4f}")
