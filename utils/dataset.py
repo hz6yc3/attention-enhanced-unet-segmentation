@@ -135,6 +135,14 @@ class RoadSegmentationDataset(Dataset):
         }
 
 
+def _gauss_noise(p: float) -> A.BasicTransform:
+    """GaussNoise with pixel-std 10-50 (on 0-255 scale), robust to the Albumentations API change."""
+    try:  # Albumentations >= 1.4.x / 2.x: std_range is a fraction of the max value
+        return A.GaussNoise(std_range=(10.0 / 255.0, 50.0 / 255.0), p=p)
+    except TypeError:  # older releases
+        return A.GaussNoise(var_limit=(10.0 ** 2, 50.0 ** 2), p=p)
+
+
 def get_train_transforms(image_size: Tuple[int, int] = (256, 256)) -> A.Compose:
     """
     Get augmentation pipeline for training.
@@ -168,7 +176,7 @@ def get_train_transforms(image_size: Tuple[int, int] = (256, 256)) -> A.Compose:
                 p=1
             ),
         ], p=0.5),
-        A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
+        _gauss_noise(p=0.2),
         A.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
