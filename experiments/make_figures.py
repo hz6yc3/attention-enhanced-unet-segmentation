@@ -39,6 +39,11 @@ def load(results):
         r = json.load(open(p))
         rows.append({"arch": r["arch"], "condition": r["condition"], "k": r["k"], "fold": r["fold"],
                      "seed": r["seed"], "dice": r["test"]["dice"], "iou": r["test"]["iou"]})
+    if not rows:
+        csv = os.path.join(results, "runs_table.csv")
+        if os.path.exists(csv):
+            t = pd.read_csv(csv)
+            return t.rename(columns={"test_dice": "dice", "test_iou": "iou"})[["arch", "condition", "k", "fold", "seed", "dice", "iou"]]
     return pd.DataFrame(rows)
 
 
@@ -82,7 +87,7 @@ def fig_paired(df, out, ref="random"):
     ax.axvline(0, color="black", lw=0.8)
     ax.set_yticks(range(len(conds)))
     ax.set_yticklabels([LABELS[c].replace("\n", " ") for c in conds], fontsize=9)
-    ax.set_xlabel(f"Test Dice difference vs. {LABELS[ref].lower()} subset (paired by fold and seed)")
+    ax.set_xlabel(f"Test Dice difference vs. {LABELS[ref].lower()} subset")
     ax.grid(axis="x", lw=0.4, alpha=0.5)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
