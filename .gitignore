@@ -5,3 +5,7 @@ __pycache__/
 outputs/
 results/runs/*/best.pt
 results/runs/*/per_image_val.csv
+RSL/*.aux
+RSL/*.log
+RSL/*.out
+RSL/main.pdf
