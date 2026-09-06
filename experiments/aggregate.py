@@ -78,7 +78,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
 def paired_tests(df: pd.DataFrame, metric: str = "test_dice") -> pd.DataFrame:
     """Paired comparisons over identical (fold, seed) replicates."""
     comparisons = [("filtered", "random"), ("filtered", "all"), ("filtered", "real"),
-                   ("random", "real"), ("all", "real"), ("antifiltered", "random"), ("all", "random")]
+                   ("random", "real"), ("all", "real"), ("antifiltered", "random"), ("antifiltered", "real"), ("all", "random")]
     rows = []
     for arch, ga in df.groupby("arch"):
         ks = sorted(ga.loc[~ga["condition"].isin(["real", "all"]), "k"].unique()) or [0]
