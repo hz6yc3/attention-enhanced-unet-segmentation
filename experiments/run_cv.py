@@ -51,7 +51,9 @@ def main():
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 456])
     parser.add_argument("--k", type=int, nargs="+", default=[250], help="synthetic subset sizes")
     parser.add_argument("--conditions", nargs="+", default=["all", "random", "filtered", "antifiltered"],
-                        choices=["all", "random", "filtered", "antifiltered"])
+                        choices=["all", "random", "filtered", "antifiltered", "middle"])
+    parser.add_argument("--dedup", action="store_true",
+                        help="collapse byte-identical synthetic images before selection (run names get a 'u' prefix)")
     parser.add_argument("--pool-archs", action="store_true",
                         help="score synthetic images with the real-only models of BOTH archs pooled "
                              "(default: each arch uses its own seed models)")
@@ -105,7 +107,7 @@ def main():
                         ks = [0] if cond == "all" else args.k
                         for k in ks:
                             cfg = cfg_for(arch=arch, fold=fold, seed=seed, condition=cond, k=k,
-                                          scores_path=str(score_files.get((arch, fold), "")))
+                                          scores_path=str(score_files.get((arch, fold), "")), dedup=args.dedup)
                             done = (cfg.run_dir / "result.json").exists()
                             planned.append(f"{'done ' if done else 'TODO '}{cfg.run_name}")
                             if not args.dry_run and not done:

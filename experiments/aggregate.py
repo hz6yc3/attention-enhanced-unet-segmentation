@@ -19,6 +19,7 @@ Usage:
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -37,7 +38,7 @@ def load_runs(results_dir: str) -> pd.DataFrame:
             "run": r["run_name"], "arch": r["arch"], "condition": r["condition"],
             "k": int(r["k"]), "fold": r["fold"], "seed": r["seed"],
             "n_synthetic": r["n_train_synthetic"], "best_step": r["best_step"],
-            "val_dice": r["val"]["dice"],
+            "val_dice": r["val"]["dice"], "dedup": bool(r.get("dedup", False)),
         }
         for m in METRICS:
             row[f"test_{m}"] = r["test"][m]
@@ -45,7 +46,10 @@ def load_runs(results_dir: str) -> pd.DataFrame:
     if not rows:
         raise SystemExit(f"No result.json files found under {results_dir}/runs")
     df = pd.DataFrame(rows)
-    df["cell"] = df.apply(lambda x: x["condition"] if x["condition"] in ("real", "all") else f"{x['condition']}{x['k']}", axis=1)
+    def cell(x):
+        c = x["condition"] if x["condition"] in ("real", "all") else f"{x['condition']}{x['k']}"
+        return ("u" + c) if (x["dedup"] and x["condition"] != "real") else c
+    df["cell"] = df.apply(cell, axis=1)
     return df
 
 
@@ -71,39 +75,48 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
         row["dice_seed_std"] = per_fold.mean()
         row["val_dice_mean"] = g["val_dice"].mean()
         out.append(row)
-    order = {"real": 0, "all": 1, "random": 2, "filtered": 3, "antifiltered": 4}
-    return pd.DataFrame(out).sort_values(["arch", "condition", "k"], key=lambda s: s.map(order) if s.name == "condition" else s).reset_index(drop=True)
+    order = {"real": 0, "all": 1, "random": 2, "filtered": 3, "antifiltered": 4, "middle": 5}
+    res = pd.DataFrame(out)
+    res["_dedup"] = res["cell"].str.startswith("u")
+    res["_ord"] = res["condition"].map(order)
+    return res.sort_values(["arch", "_dedup", "_ord", "k"]).drop(columns=["_dedup", "_ord"]).reset_index(drop=True)
 
 
 def paired_tests(df: pd.DataFrame, metric: str = "test_dice") -> pd.DataFrame:
-    """Paired comparisons over identical (fold, seed) replicates."""
-    comparisons = [("filtered", "random"), ("filtered", "all"), ("filtered", "real"),
-                   ("random", "real"), ("all", "real"), ("antifiltered", "random"), ("antifiltered", "real"), ("all", "random")]
+    """Paired comparisons over identical (fold, seed) replicates, by cell name."""
     rows = []
     for arch, ga in df.groupby("arch"):
-        ks = sorted(ga.loc[~ga["condition"].isin(["real", "all"]), "k"].unique()) or [0]
-        for k in ks:
-            def pick(cond):
-                sel = ga[ga["condition"] == cond]
-                if cond not in ("real", "all"):
-                    sel = sel[sel["k"] == k]
-                return sel.set_index(["fold", "seed"])[metric]
-            for a, b in comparisons:
-                xa, xb = pick(a), pick(b)
-                common = xa.index.intersection(xb.index)
-                if len(common) < 2:
-                    continue
-                d = (xa.loc[common] - xb.loc[common]).values
-                try:
-                    w_p = stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0
-                except ValueError:
-                    w_p = np.nan
-                t_p = stats.ttest_rel(xa.loc[common], xb.loc[common]).pvalue
-                rows.append({
-                    "arch": arch, "k": k, "a": a, "b": b, "n_pairs": len(common),
-                    "mean_diff": d.mean(), "diff_ci95": ci95(d), "wins_a": int((d > 0).sum()),
-                    "wilcoxon_p": w_p, "paired_t_p": t_p,
-                })
+        series = {c: g.set_index(["fold", "seed"])[metric] for c, g in ga.groupby("cell")}
+        pairs = []
+        for prefix in ("", "u"):
+            ks = set()
+            for c in series:
+                m = re.fullmatch(rf"{prefix}(random|filtered|antifiltered|middle)(\d+)", c)
+                if m:
+                    ks.add(int(m.group(2)))
+            for k in sorted(ks):
+                r = f"{prefix}random{k}"
+                for a in (f"{prefix}filtered{k}", f"{prefix}antifiltered{k}", f"{prefix}middle{k}", f"{prefix}all"):
+                    pairs.append((a, r))
+                pairs += [(r, "real"), (f"{prefix}all", "real"), (f"{prefix}filtered{k}", "real"),
+                          (f"{prefix}antifiltered{k}", "real"), (f"{prefix}middle{k}", "real")]
+        pairs.append(("uall", "all"))
+        seen = set()
+        for a, b in pairs:
+            if (a, b) in seen or a not in series or b not in series:
+                continue
+            seen.add((a, b))
+            common = series[a].index.intersection(series[b].index)
+            if len(common) < 2:
+                continue
+            d = (series[a].loc[common] - series[b].loc[common]).values
+            try:
+                w_p = stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0
+            except ValueError:
+                w_p = np.nan
+            t_p = stats.ttest_rel(series[a].loc[common], series[b].loc[common]).pvalue
+            rows.append({"arch": arch, "a": a, "b": b, "n_pairs": len(common), "mean_diff": d.mean(),
+                         "diff_ci95": ci95(d), "wins_a": int((d > 0).sum()), "wilcoxon_p": w_p, "paired_t_p": t_p})
     return pd.DataFrame(rows)
 
 
@@ -122,10 +135,10 @@ def to_markdown(summary: pd.DataFrame) -> str:
 def tests_to_markdown(tests: pd.DataFrame) -> str:
     if tests.empty:
         return "(no paired comparisons available yet)"
-    lines = ["| arch | k | comparison | pairs | Δ Dice (a−b) | a wins | Wilcoxon p | paired t p |",
-             "|---|---|---|---|---|---|---|---|"]
+    lines = ["| arch | comparison | pairs | Δ Dice (a−b) | a wins | Wilcoxon p | paired t p |",
+             "|---|---|---|---|---|---|---|"]
     for _, r in tests.iterrows():
-        lines.append(f"| {r['arch']} | {r['k']} | {r['a']} vs {r['b']} | {r['n_pairs']} | "
+        lines.append(f"| {r['arch']} | {r['a']} vs {r['b']} | {r['n_pairs']} | "
                      f"{r['mean_diff']:+.4f} (±{r['diff_ci95']:.4f}) | {r['wins_a']}/{r['n_pairs']} | "
                      f"{r['wilcoxon_p']:.3g} | {r['paired_t_p']:.3g} |")
     return "\n".join(lines)

@@ -9,6 +9,8 @@
 #   baseline + baseline U-Net real / random / filtered                             ~45 runs
 #   anti     + antifiltered control                                                ~15 runs
 #   dose     + random / filtered at k = 100 and 500                                ~60 runs
+#   dedup    + deduplicated synthetic set (106 unique images): all / random /
+#              filtered / antifiltered / middle at k = 50                           ~75 runs
 # Every stage skips runs that already have a result.json, so the script can be
 # re-launched after an interruption and it continues where it stopped.
 set -euo pipefail
@@ -42,6 +44,10 @@ fi
 if has anti; then
   echo "=== stage anti $(date) ==="
   python -m experiments.run_cv --archs attention --conditions antifiltered --k $K $COMMON
+fi
+if has dedup; then
+  echo "=== stage dedup $(date) ==="
+  python -m experiments.run_cv --archs attention --dedup --conditions all random filtered antifiltered middle --k 50 $COMMON
 fi
 if has dose; then
   echo "=== stage dose $(date) ==="

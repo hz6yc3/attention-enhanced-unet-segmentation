@@ -35,6 +35,7 @@ Usage:
 import argparse
 import copy
 import functools
+import hashlib
 import json
 import math
 import os
@@ -65,7 +66,7 @@ from utils.splits import (
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning, module="albumentations")
 
-CONDITIONS = ("real", "all", "random", "filtered", "antifiltered")
+CONDITIONS = ("real", "all", "random", "filtered", "antifiltered", "middle")
 
 
 @dataclass
@@ -77,6 +78,7 @@ class RunConfig:
     k: int = 0                              # number of synthetic images for random/filtered/antifiltered
     scores_path: Optional[str] = None       # CSV from experiments/score_synthetic.py
     score_key: str = "seed_disagreement"    # column used to rank synthetic images
+    dedup: bool = False                     # collapse byte-identical synthetic images before selection
 
     data_root: str = "data"
     splits_path: str = DEFAULT_SPLIT_PATH
@@ -105,6 +107,8 @@ class RunConfig:
     @property
     def run_name(self) -> str:
         cond = self.condition if self.condition in ("real", "all") else f"{self.condition}{self.k}"
+        if self.dedup and self.condition != "real":
+            cond = "u" + cond
         return f"{self.arch}_{cond}_f{self.fold}_s{self.seed}"
 
     @property
@@ -135,6 +139,18 @@ def pick_device(requested: Optional[str] = None) -> torch.device:
     return torch.device("cpu")
 
 
+def dedup_pairs(pairs: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+    """Keep one representative (first by name) per byte-identical synthetic image."""
+    seen, out = set(), []
+    for img, mask in pairs:
+        with open(img, "rb") as f:
+            key = hashlib.md5(f.read()).hexdigest()
+        if key not in seen:
+            seen.add(key)
+            out.append((img, mask))
+    return out
+
+
 def select_synthetic(cfg: RunConfig) -> List[Tuple[str, str]]:
     """Return the list of synthetic (image, mask) paths for this condition."""
     if cfg.condition == "real":
@@ -142,6 +158,8 @@ def select_synthetic(cfg: RunConfig) -> List[Tuple[str, str]]:
     pairs = [(str(i), str(m)) for i, m in list_synthetic_pairs(cfg.data_root)]
     if len(pairs) == 0:
         raise FileNotFoundError("No synthetic images found but a synthetic condition was requested")
+    if cfg.dedup:
+        pairs = dedup_pairs(pairs)
     if cfg.condition == "all":
         return pairs
     if cfg.k <= 0 or cfg.k > len(pairs):
@@ -152,7 +170,7 @@ def select_synthetic(cfg: RunConfig) -> List[Tuple[str, str]]:
         idx = rng.choice(len(pairs), size=cfg.k, replace=False)
         return [pairs[i] for i in sorted(idx)]
 
-    if cfg.condition in ("filtered", "antifiltered"):
+    if cfg.condition in ("filtered", "antifiltered", "middle"):
         if not cfg.scores_path or not os.path.exists(cfg.scores_path):
             raise FileNotFoundError(
                 f"Condition '{cfg.condition}' needs a scores CSV (got {cfg.scores_path}). "
@@ -163,9 +181,14 @@ def select_synthetic(cfg: RunConfig) -> List[Tuple[str, str]]:
             raise KeyError(f"'{cfg.score_key}' not in {cfg.scores_path} columns: {list(scores.columns)}")
         by_name = {Path(i).name: (i, m) for i, m in pairs}
         scores = scores[scores["name"].isin(by_name)]
-        ascending = cfg.condition == "filtered"   # keep lowest disagreement
-        ranked = scores.sort_values([cfg.score_key, "name"], ascending=[ascending, True])
-        chosen = ranked["name"].head(cfg.k).tolist()
+        ranked = scores.sort_values([cfg.score_key, "name"], ascending=[True, True])["name"].tolist()
+        if cfg.condition == "filtered":        # lowest disagreement
+            chosen = ranked[: cfg.k]
+        elif cfg.condition == "antifiltered":  # highest disagreement
+            chosen = ranked[-cfg.k:]
+        else:                                  # middle band centred on the median
+            start = (len(ranked) - cfg.k) // 2
+            chosen = ranked[start: start + cfg.k]
         return [by_name[n] for n in chosen]
 
     raise ValueError(f"Unknown condition {cfg.condition}; choose from {CONDITIONS}")
@@ -349,7 +372,7 @@ def run_experiment(cfg: RunConfig, force: bool = False, verbose: bool = True) ->
     result = {
         "run_name": cfg.run_name,
         "arch": cfg.arch, "fold": cfg.fold, "seed": cfg.seed,
-        "condition": cfg.condition, "k": len(synth), "score_key": cfg.score_key,
+        "condition": cfg.condition, "k": len(synth), "score_key": cfg.score_key, "dedup": cfg.dedup,
         "n_train_real": len(fold["train"][0]), "n_train_synthetic": len(synth),
         "max_steps": cfg.max_steps, "best_step": best_step,
         "val": summarize(val_df), "test": summarize(test_df),
@@ -407,11 +430,12 @@ def main():
     parser.add_argument("--condition", choices=CONDITIONS, default="real")
     parser.add_argument("--k", type=int, default=0)
     parser.add_argument("--scores", default=None, help="scores CSV for filtered/antifiltered")
+    parser.add_argument("--dedup", action="store_true", help="collapse duplicate synthetic images before selection")
     parser.add_argument("--force", action="store_true", help="re-run even if result.json exists")
     add_common_args(parser)
     args = parser.parse_args()
     cfg = config_from_args(args, arch=args.arch, fold=args.fold, seed=args.seed,
-                           condition=args.condition, k=args.k, scores_path=args.scores)
+                           condition=args.condition, k=args.k, scores_path=args.scores, dedup=args.dedup)
     run_experiment(cfg, force=args.force)
 
 
