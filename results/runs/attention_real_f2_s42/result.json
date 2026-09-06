@@ -1,0 +1,149 @@
+{
+  "run_name": "attention_real_f2_s42",
+  "arch": "attention",
+  "fold": 2,
+  "seed": 42,
+  "condition": "real",
+  "k": 0,
+  "score_key": "seed_disagreement",
+  "n_train_real": 64,
+  "n_train_synthetic": 0,
+  "max_steps": 1200,
+  "best_step": 1200,
+  "val": {
+    "dice": 0.8363752011209726,
+    "iou": 0.7292504329234362,
+    "precision": 0.8215255197137594,
+    "recall": 0.8557539507746696,
+    "accuracy": 0.9387168884277344,
+    "dice_std_images": 0.1009399603117565,
+    "pooled_dice": 0.8489208633093526,
+    "pooled_iou": 0.7375,
+    "n_images": 16
+  },
+  "test": {
+    "dice": 0.7988994929939508,
+    "iou": 0.6932624166831374,
+    "precision": 0.7882711760699749,
+    "recall": 0.8338684305548668,
+    "accuracy": 0.9378143310546875,
+    "dice_std_images": 0.18269087883980914,
+    "pooled_dice": 0.8454613710307378,
+    "pooled_iou": 0.7322937057424754,
+    "n_images": 20
+  },
+  "history": [
+    {
+      "step": 100,
+      "train_loss": 0.97941446185112,
+      "val_dice": 0.30540973134338856,
+      "lr": 0.0001
+    },
+    {
+      "step": 200,
+      "train_loss": 0.5590488249063492,
+      "val_dice": 0.5119896568357944,
+      "lr": 9.799490219391762e-05
+    },
+    {
+      "step": 300,
+      "train_loss": 0.4577526316046715,
+      "val_dice": 0.685648531652987,
+      "lr": 9.214204987514347e-05
+    },
+    {
+      "step": 400,
+      "train_loss": 0.35269481122493745,
+      "val_dice": 0.7687852922827005,
+      "lr": 8.291560633029161e-05
+    },
+    {
+      "step": 500,
+      "train_loss": 0.3038266403973103,
+      "val_dice": 0.7956089377403259,
+      "lr": 7.106304314359339e-05
+    },
+    {
+      "step": 600,
+      "train_loss": 0.27546546801924704,
+      "val_dice": 0.8166761510074139,
+      "lr": 5.754458449452762e-05
+    },
+    {
+      "step": 700,
+      "train_loss": 0.24177247226238252,
+      "val_dice": 0.826119314879179,
+      "lr": 4.345541550547239e-05
+    },
+    {
+      "step": 800,
+      "train_loss": 0.22199953600764274,
+      "val_dice": 0.8172770356759429,
+      "lr": 2.993695685640663e-05
+    },
+    {
+      "step": 900,
+      "train_loss": 0.2086452952027321,
+      "val_dice": 0.8303299620747566,
+      "lr": 1.8084393669708392e-05
+    },
+    {
+      "step": 1000,
+      "train_loss": 0.1942042376101017,
+      "val_dice": 0.8334173634648323,
+      "lr": 8.857950124856524e-06
+    },
+    {
+      "step": 1100,
+      "train_loss": 0.18575308933854104,
+      "val_dice": 0.8325189724564552,
+      "lr": 3.0050978060823855e-06
+    },
+    {
+      "step": 1200,
+      "train_loss": 0.185096717402339,
+      "val_dice": 0.8363752011209726,
+      "lr": 1e-06
+    }
+  ],
+  "synthetic_names": [],
+  "elapsed_sec": 676.9664485454559,
+  "device": "cuda",
+  "config": {
+    "arch": "attention",
+    "fold": 2,
+    "seed": 42,
+    "condition": "real",
+    "k": 0,
+    "scores_path": null,
+    "score_key": "seed_disagreement",
+    "data_root": "data",
+    "splits_path": "splits/real_splits.json",
+    "out_dir": "/content/drive/MyDrive/road_segmentation/results",
+    "max_steps": 1200,
+    "eval_every": 100,
+    "batch_size": 8,
+    "learning_rate": 0.0001,
+    "weight_decay": 1e-05,
+    "warmup_steps": 100,
+    "min_lr": 1e-06,
+    "loss_function": "bce_dice",
+    "gradient_clip": 1.0,
+    "use_amp": true,
+    "num_workers": 4,
+    "image_size": [
+      256,
+      256
+    ],
+    "encoder_channels": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "bottleneck_channels": 1024,
+    "dropout_rate": 0.1,
+    "save_checkpoint": true,
+    "device": null
+  }
+}
