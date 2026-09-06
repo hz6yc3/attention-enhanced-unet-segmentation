@@ -1,0 +1,194 @@
+% Draft for Remote Sensing Letters (Taylor & Francis).
+% Before submission, move the body into the T&F "Interact" LaTeX template
+% (https://www.tandfonline.com/action/authorSubmission?journalCode=trsl20)
+% and check the current word / figure limits for Letters.
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{setspace}
+\usepackage[round]{natbib}
+\onehalfspacing
+
+\title{Random Beats Curated: Committee-Disagreement Selection of GAN-Synthetic Imagery Does Not Improve Small-Data Road Segmentation}
+\author{Anonymous Author(s)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Generative models are increasingly used to expand small annotated satellite datasets, but two questions remain open for practitioners: how much synthetic data is actually useful, and can the useful images be identified in advance. We study both on the EPFL road-segmentation benchmark (100 annotated images) expanded with 1{,}003 Pix2Pix-generated image--mask pairs, using an Attention U-Net evaluated under a strict real-only protocol: 20 real images are held out as a fixed test set, the remaining 80 are cross-validated in five folds, synthetic images are confined to training folds, and every condition trains for an identical number of optimizer steps. Each condition is replicated 15 times (5 folds $\times$ 3 seeds) and compared with paired tests. Adding synthetic data improves test Dice from 0.806 to 0.832 ($+2.6$ points, $p<10^{-3}$), but a random subset of 250 synthetic images captures the entire gain; all 1{,}003 images are marginally worse. We then test committee-based selection: synthetic images are scored by the disagreement among three real-trained models, and either the 250 most-agreed or the 250 most-disputed images are kept. Both lose to a random subset of the same size in 15/15 and 14/15 paired replicates ($p<10^{-3}$), and neither improves on real data alone. Diagnostics show that committee disagreement is strongly correlated with mismatch between the synthetic image and its mask ($\rho\approx0.87$) and negatively correlated with road density, so agreement selects redundant, dense-road images while disagreement selects noisy-label, sparse-road images; random sampling preserves the distribution. We also show that validating on synthetic images, as is common with expanded public datasets, inflates the apparent benefit roughly sevenfold. Code, frozen splits and per-run results are released.
+\end{abstract}
+
+\noindent\textbf{Keywords:} road extraction; synthetic data; Pix2Pix; Attention U-Net; data selection; query by committee; evaluation protocol
+
+\section{Introduction}
+
+Pixel-level road annotations are expensive to produce, and conditional generative models offer an attractive shortcut: Pix2Pix \citep{isola2017} can translate a road mask into a plausible satellite image, so new mask layouts yield new training pairs with perfect label alignment. Several public remote-sensing datasets now ship with such GAN-expanded training sets, and reported gains are often large. Two practical questions, however, are rarely answered. First, how much synthetic data is needed, and does the benefit keep growing with volume? Second, synthetic sets contain both realistic and failed renderings; can the useful images be selected before training?
+
+A natural selection heuristic comes from active learning. In query-by-committee \citep{seung1992,settles2009}, several models trained on the labelled data vote on unlabelled samples; disagreement identifies informative ones. Applied to synthetic data the heuristic cuts both ways. One may keep the images a committee of real-trained models \emph{agrees} on, treating disagreement as evidence of generation artefacts, or keep the images the committee \emph{disputes}, treating them as the most informative. Both are plausible; neither has been tested for GAN-synthetic satellite imagery.
+
+An earlier version of this study (rejected from a conference, and the reason we revisit the problem) reported that expanding the training set from 100 to 1{,}103 images raised Attention U-Net Dice from 0.81 to 0.96. Reviewers correctly noted that those numbers were computed on a validation split drawn from the \emph{pooled} real and synthetic images, so roughly 90\% of the validation set was itself synthetic. We show here that under a real-only protocol the true gain is about one seventh of that figure. This is not specific to our earlier work: any study that validates on a GAN-expanded pool inherits the same inflation, which motivates the protocol we adopt.
+
+This letter makes three contributions. (i) Under a leakage-free, compute-matched protocol with 15 paired replicates per condition, we quantify the real benefit of Pix2Pix expansion for Attention U-Net road segmentation and show that it saturates at a quarter of the available synthetic set. (ii) We test committee-disagreement selection in both directions and find that a random subset of equal size outperforms both, a negative result for a widely assumed heuristic. (iii) We explain the failure through diagnostics that link committee disagreement to image--mask mismatch and road density, and we quantify the evaluation inflation caused by validating on synthetic images. Code, the frozen split file and all per-run results are released to make the study reproducible.\footnote{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
+
+\section{Related work}
+
+U-Net \citep{ronneberger2015} and its variants dominate road extraction from overhead imagery \citep{zhang2018,zhou2018,batra2019}. Attention U-Net \citep{oktay2018} adds additive attention gates to the skip connections, a lightweight modification (about 1\% more parameters) that suppresses background features; it is a common choice for thin-structure segmentation and is the architecture used throughout this study. GAN-based augmentation \citep{goodfellow2014,isola2017} is widely used to counter annotation scarcity in remote sensing, but reported benefits vary and evaluation practice is inconsistent: gains are frequently measured on splits that include synthetic images. Data selection for training sets has been studied mainly for real unlabelled data in active learning \citep{settles2009} and for web-scale pretraining corpora; selection of GAN-synthetic samples by committee uncertainty has, to our knowledge, not been evaluated on a remote-sensing segmentation task with a held-out real test set.
+
+\section{Data and evaluation protocol}
+
+\subsection{Dataset}
+
+We use the Kaggle release of the EPFL road-segmentation benchmark \citep{ali2023}: 100 RGB satellite images of $400\times400$ pixels with binary road masks, and 1{,}003 Pix2Pix-generated $416\times416$ image--mask pairs produced by the dataset author from novel mask layouts. Road pixels make up $20.3\%\pm7.2\%$ of a real image. The 50 unlabelled competition test images are not used. Figure~\ref{fig:dataset} shows representative real samples.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{fig_dataset.png}
+\caption{Real training samples spanning urban, suburban and rural scenes (top) and their binary road masks (bottom).}
+\label{fig:dataset}
+\end{figure}
+
+\subsection{Real-only cross-validation}
+
+The 100 real images are sorted by road fraction and stratified into a fixed \textbf{test set of 20} and \textbf{five folds of 16}; the assignment is written to a split file that is shared by every experiment and released with the code. For fold $f$, the 16 images of fold $f$ form the validation set, the other 64 form the real training set, and the 20 test images are untouched. Synthetic images are added to the training set only and never appear in validation or test. All model selection uses the real validation fold; the test set is scored once per run with the selected weights. This removes the leakage that affected our earlier results and, we argue, many published comparisons on GAN-expanded datasets.
+
+\subsection{Compute-matched training}
+
+Adding 1{,}003 images multiplies the number of updates per epoch by 17. To separate the effect of \emph{data} from the effect of \emph{more optimisation}, every run trains for exactly 1{,}200 optimizer steps at batch size 8 (Adam, learning rate $10^{-4}$, weight decay $10^{-5}$, 100 warm-up steps then cosine decay to $10^{-6}$), regardless of training-set size. Images are resized to $256\times256$ and normalised with ImageNet statistics; training-time augmentation uses flips, 90$^\circ$ rotations, shift--scale--rotate, brightness/contrast, hue/saturation and Gaussian noise via Albumentations \citep{buslaev2020}. The loss is the sum of binary cross-entropy and Dice loss; mixed precision is used. The validation fold is evaluated every 100 steps and the best checkpoint by mean per-image Dice is kept. The Attention U-Net follows \citet{oktay2018} with encoder widths 64--128--256--512, a 1{,}024-channel bottleneck, transposed-convolution upsampling and attention gates on all four skip connections (31.4\,M parameters).
+
+\subsection{Replication and statistics}
+
+Every condition is trained for all five folds with three seeds (42, 123, 456), giving 15 replicates. Seeds control initialisation, data order and augmentation. We report the mean per-image Dice and IoU on the 20 test images, averaged over replicates, with the standard deviation across replicates and the mean across folds of the standard deviation across seeds (``seed sensitivity''). Conditions are compared with the Wilcoxon signed-rank test and the paired $t$-test over the 15 matched (fold, seed) pairs.
+
+\section{Committee-disagreement selection}
+
+For each fold, the three real-only models (one per seed) constitute a committee. Each synthetic image $x$ is passed through the committee and predictions are binarised at 0.5. The \emph{committee disagreement} is the mean pairwise $1-\mathrm{Dice}$ between the three binary predictions. Because the committee is trained only on the real training folds, the score never sees validation or test images. We also record, for diagnosis only, the mean $1-\mathrm{Dice}$ between each member's prediction and the synthetic mask (\emph{label disagreement}) and the road fraction of the mask.
+
+Five training conditions are compared, all with 64 real images: \textbf{real} (no synthetic data); \textbf{all} (all 1{,}003 synthetic images); \textbf{random} ($k=250$ synthetic images drawn uniformly, re-drawn per fold and seed); \textbf{most-agreed} (the $k$ images with the lowest committee disagreement, i.e.\ filtering out suspected artefacts); and \textbf{most-disputed} (the $k$ images with the highest disagreement, i.e.\ uncertainty sampling). $k=250$ is one quarter of the synthetic set. In total $5$ conditions $\times 15$ replicates $= 75$ training runs plus five committee scoring passes were executed.
+
+\section{Results}
+
+\begin{table}[t]
+\centering
+\caption{Test-set results on the 20 held-out real images (mean $\pm$ SD over 15 fold$\times$seed replicates). Seed sensitivity is the SD across seeds averaged over folds. All synthetic conditions use 64 real training images plus the stated synthetic images and an identical 1{,}200-step budget.}
+\label{tab:main}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+Condition & Synthetic & Dice & IoU & Seed sens.\ (Dice) & Val.\ Dice \\
+\midrule
+Real only          & 0     & $0.806 \pm 0.015$ & $0.698 \pm 0.018$ & 0.014 & 0.779 \\
++ all synthetic    & 1{,}003 & $0.828 \pm 0.010$ & $0.726 \pm 0.013$ & 0.009 & 0.808 \\
++ random subset    & 250   & $\mathbf{0.832 \pm 0.011}$ & $\mathbf{0.731 \pm 0.016}$ & 0.012 & 0.816 \\
++ most-agreed      & 250   & $0.803 \pm 0.007$ & $0.702 \pm 0.010$ & 0.007 & 0.794 \\
++ most-disputed    & 250   & $0.798 \pm 0.021$ & $0.677 \pm 0.027$ & 0.017 & 0.784 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Paired comparisons of test Dice over the 15 matched (fold, seed) replicates. $\Delta$ is the mean difference $a-b$ with its 95\% confidence interval; ``wins'' counts replicates in which $a$ exceeds $b$.}
+\label{tab:paired}
+\small
+\begin{tabular}{llrrrr}
+\toprule
+$a$ & $b$ & $\Delta$ Dice & Wins & Wilcoxon $p$ & Paired $t$ $p$ \\
+\midrule
+random        & real only     & $+0.026 \pm 0.010$ & 13/15 & $3.1\times10^{-4}$ & $8.4\times10^{-5}$ \\
+all           & real only     & $+0.022 \pm 0.010$ & 14/15 & $1.2\times10^{-3}$ & $3.4\times10^{-4}$ \\
+all           & random        & $-0.004 \pm 0.005$ & 3/15  & 0.064 & 0.14 \\
+most-agreed   & random        & $-0.029 \pm 0.006$ & 0/15  & $6.1\times10^{-5}$ & $1.1\times10^{-7}$ \\
+most-disputed & random        & $-0.034 \pm 0.011$ & 1/15  & $1.2\times10^{-4}$ & $1.2\times10^{-5}$ \\
+most-agreed   & real only     & $-0.003 \pm 0.009$ & 7/15  & 0.60 & 0.50 \\
+most-disputed & real only     & $-0.008 \pm 0.012$ & 5/15  & 0.28 & 0.27 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{fig_conditions.png}
+\caption{Test Dice of every replicate per condition. Grey lines join the same (fold, seed) across conditions; black bars show mean $\pm$ SD.}
+\label{fig:conditions}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\linewidth]{fig_paired.png}
+\caption{Paired differences in test Dice relative to the random 250-image subset. Diamonds and bars show the mean and 95\% confidence interval over 15 replicates.}
+\label{fig:paired}
+\end{figure}
+
+\paragraph{Synthetic data helps, modestly, and saturates early.} Table~\ref{tab:main} and Figure~\ref{fig:conditions} summarise the 75 runs. Adding synthetic data raises test Dice from 0.806 to 0.832 with a random subset of 250 images ($+2.6$ points, 13/15 wins, Table~\ref{tab:paired}) and to 0.828 with all 1{,}003 images. The remaining 753 images add nothing: the full set is marginally \emph{worse} than the random quarter (3/15 wins, $p=0.06$). Synthetic data also reduces seed sensitivity, from 0.014 to 0.009--0.012 Dice, a 20--35\% reduction. These effects are consistent across folds despite substantial fold-to-fold differences in absolute Dice (Figure~\ref{fig:conditions}).
+
+\paragraph{Committee selection loses to random in both directions.} Keeping the 250 most-agreed images yields Dice 0.803, below the random subset in every one of the 15 replicates ($\Delta=-0.029$, $p<10^{-4}$) and statistically indistinguishable from using no synthetic data at all (7/15 wins, $p=0.60$). Keeping the 250 most-disputed images is worse still: Dice 0.798 with the largest variance of any condition, below random in 14/15 replicates ($\Delta=-0.034$) and again no better than real data alone. The IoU gap is larger than the Dice gap for the most-disputed subset (0.677 versus 0.731), indicating that these models make more, and larger, false-positive and false-negative regions. Figure~\ref{fig:paired} shows the paired differences.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.66\linewidth]{fig_scores.png}
+\caption{Committee disagreement versus disagreement with the synthetic mask for all 1{,}003 synthetic images (fold-0 committee), coloured by road fraction. Circles mark the 250 most-agreed (blue) and most-disputed (red) images.}
+\label{fig:scores}
+\end{figure}
+
+\paragraph{Why both selections fail.} Figure~\ref{fig:scores} and the per-fold diagnostics explain the result. Committee disagreement is strongly correlated with label disagreement (Spearman $\rho=0.86$--$0.89$ across the five folds): the images the committee disputes are those whose rendered content does not match their mask. Mean label disagreement is 0.11 for the most-agreed subset, 0.22 for the whole set and 0.35--0.41 for the most-disputed subset. Disagreement is also negatively correlated with road density ($\rho=-0.25$ to $-0.47$), partly because Dice is unstable on sparse masks and partly because sparse scenes are harder. Consequently the most-agreed subset over-represents dense-road scenes (mean road fraction 0.22--0.25 versus 0.20 for real data) and the most-disputed subset under-represents them (0.14--0.17). The ranking is a stable property of the images: on average 67\% of the 250 most-agreed images are the same across committees trained on different real folds. The two selections therefore fail for opposite reasons. Agreement keeps images the real-trained models already predict correctly, which carry little new information and skew road density upward; the resulting models have the lowest seed variance of any condition, as expected when training data is redundant. Disagreement keeps images whose masks are effectively noisy labels and skews road density downward. Uniform sampling preserves the synthetic distribution, retaining diversity while diluting the noisy fraction, and wins.
+
+\paragraph{Evaluation inflation.} Under the earlier pooled-validation protocol the same architecture showed a gain of 15.1 Dice points from synthetic expansion (0.810 to 0.961). Under the real-only protocol the gain is 2.2 points for the same 1{,}003 images, a factor of about seven. The synthetic images are easier than real ones (near-perfect label alignment, no annotation noise) and are statistically closer to the training set, so a validation split drawn from the pool measures fit to the generator rather than performance on real imagery.
+
+\section{Discussion}
+
+The central practical message is that, for GAN-expanded road data, selection by committee uncertainty is not a substitute for random sampling, and more synthetic data is not better beyond a modest fraction. Both findings run against common intuition. The first is notable because query-by-committee is well founded for \emph{real} unlabelled data, where a label is obtained after selection; for synthetic data the label is fixed by construction, so disagreement flags rendering failure rather than informative difficulty, and agreement flags redundancy. Any criterion that ranks synthetic images by a real-trained model will inherit this coupling unless it explicitly controls for label fidelity and scene composition. A stratified or diversity-preserving selection, or a middle band that discards both extremes, is the obvious next test, and our released scores make it cheap to run.
+
+The second finding, saturation at 250 of 1{,}003 images, suggests that the generator's effective diversity is limited: the 1{,}003 masks were derived from the same 100 originals, so additional samples are largely re-renderings of similar layouts. This also bounds what can be expected from GAN expansion on this benchmark, and it is worth verifying on other generators (e.g.\ diffusion models) and datasets before generalising.
+
+Our earlier, leaked result and its correction argue for a simple rule when working with expanded public datasets: hold out real images before anything synthetic is added, cross-validate on real images, match the optimisation budget across conditions, and report paired statistics over replicates. The cost was about six GPU-hours for the 75 runs reported here.
+
+\paragraph{Limitations.} The study uses one benchmark of 100 real images, one generator whose synthetic masks were produced by the dataset author, one architecture and one subset size. Absolute Dice differs by fold (Figure~\ref{fig:conditions}), which reflects the small test set; our conclusions rest on paired within-fold comparisons, which are robust to this. We did not evaluate baseline U-Net under the new protocol, so the architecture comparison of the earlier study is not revisited here.
+
+\section{Conclusion}
+
+Under a leakage-free, compute-matched, 15-replicate protocol, Pix2Pix synthetic imagery improves Attention U-Net road segmentation on real held-out images by 2.6 Dice points, a random quarter of the synthetic set captures the whole gain, and selecting synthetic images by committee agreement or disagreement is significantly worse than random selection and no better than using no synthetic data. Committee disagreement primarily measures image--mask mismatch and road density, not usefulness. We recommend uniform sampling of modest synthetic volumes, real-only validation and testing, and paired multi-replicate reporting as defaults for GAN-expanded remote-sensing datasets.
+
+\section*{Disclosure statement}
+The authors report no competing interests.
+
+\section*{Data and code availability}
+Code, the frozen split file, committee scores and all 75 per-run result files are available at \url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}. The dataset is publicly available on Kaggle \citep{ali2023}.
+
+\section*{Use of AI tools}
+Claude (Anthropic) was used to assist with code for the experimental pipeline and with language editing of this manuscript. The study design, execution, analysis and conclusions are the authors' own, and all numbers were produced by the released code.
+
+\bibliographystyle{apalike}
+\begin{thebibliography}{99}
+
+\bibitem[Ali, 2023]{ali2023} Ali, S. (2023). Satellite images for road segmentation. Kaggle. \url{https://www.kaggle.com/datasets/sanadalali/satellite-images-for-road-segmentation}
+
+\bibitem[Batra et al., 2019]{batra2019} Batra, A., Singh, S., Pang, G., Basu, S., Jawahar, C. V., and Paluri, M. (2019). Improved road connectivity by joint learning of orientation and segmentation. In \emph{Proc. CVPR}.
+
+\bibitem[Buslaev et al., 2020]{buslaev2020} Buslaev, A., Iglovikov, V. I., Khvedchenya, E., Parinov, A., Druzhinin, M., and Kalinin, A. A. (2020). Albumentations: Fast and flexible image augmentations. \emph{Information}, 11(2):125.
+
+\bibitem[Goodfellow et al., 2014]{goodfellow2014} Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., and Bengio, Y. (2014). Generative adversarial nets. In \emph{Proc. NeurIPS}.
+
+\bibitem[Isola et al., 2017]{isola2017} Isola, P., Zhu, J.-Y., Zhou, T., and Efros, A. A. (2017). Image-to-image translation with conditional adversarial networks. In \emph{Proc. CVPR}.
+
+\bibitem[Oktay et al., 2018]{oktay2018} Oktay, O., Schlemper, J., Le Folgoc, L., Lee, M., Heinrich, M., Misawa, K., Mori, K., McDonagh, S., Hammerla, N. Y., Kainz, B., Glocker, B., and Rueckert, D. (2018). Attention U-Net: Learning where to look for the pancreas. In \emph{Proc. MIDL}.
+
+\bibitem[Ronneberger et al., 2015]{ronneberger2015} Ronneberger, O., Fischer, P., and Brox, T. (2015). U-Net: Convolutional networks for biomedical image segmentation. In \emph{Proc. MICCAI}, pages 234--241.
+
+\bibitem[Settles, 2009]{settles2009} Settles, B. (2009). Active learning literature survey. Computer Sciences Technical Report 1648, University of Wisconsin--Madison.
+
+\bibitem[Seung et al., 1992]{seung1992} Seung, H. S., Opper, M., and Sompolinsky, H. (1992). Query by committee. In \emph{Proc. COLT}, pages 287--294.
+
+\bibitem[Zhang et al., 2018]{zhang2018} Zhang, Z., Liu, Q., and Wang, Y. (2018). Road extraction by deep residual U-Net. \emph{IEEE Geoscience and Remote Sensing Letters}, 15(5):749--753.
+
+\bibitem[Zhou et al., 2018]{zhou2018} Zhou, L., Zhang, C., and Wu, M. (2018). D-LinkNet: LinkNet with pretrained encoder and dilated convolution for high resolution satellite imagery road extraction. In \emph{Proc. CVPR Workshops}.
+
+\end{thebibliography}
+
+\end{document}
