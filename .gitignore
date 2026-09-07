@@ -9,3 +9,7 @@ RSL/*.aux
 RSL/*.log
 RSL/*.out
 RSL/main.pdf
+RSL/main_anon.pdf
+RSL/main_anon.aux
+RSL/main_anon.log
+RSL/main_anon.out

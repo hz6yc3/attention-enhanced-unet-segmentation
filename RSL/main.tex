@@ -15,7 +15,6 @@
 % both an anonymous and a with-author-details manuscript; figures 300 dpi
 % colour, supplied separately at revision (JPEG/TIFF/PS preferred).
 %
-% Remaining \tbd{...} markers are author-supplied items (authors, funding).
 \documentclass[11pt]{article}
 \usepackage[a4paper,margin=3cm]{geometry}
 \usepackage{amsmath,amssymb}
@@ -28,9 +27,19 @@
 \usepackage[round]{natbib}
 \singlespacing
 \newcommand{\tbd}[1]{\textcolor{red}{[#1]}}
+% Build the anonymous review copy with:  pdflatex "\def\anonymous{1}\input{main.tex}"  (see main_anon.tex)
+\ifdefined\anonymous
+  \newcommand{\repourl}{[repository URL withheld for anonymous review; released on acceptance]}
+  \newcommand{\authorblock}{Anonymous author}
+\else
+  \newcommand{\repourl}{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
+  \newcommand{\authorblock}{Anantharaman Janakiraman\\[2pt]
+    \normalsize Department of Electrical Engineering and Computer Science, Florida Atlantic University, Boca Raton, FL, USA\\
+    \normalsize Corresponding author: \texttt{ajanakiraman2024@fau.edu}}
+\fi
 
 \title{Deduplicate, Then Disagree: What GAN-Synthetic Imagery Is Worth for Small-Data Satellite Road Segmentation, and How to Select It}
-\author{\tbd{Author names, affiliations, ORCIDs; corresponding author email}}
+\author{\authorblock}
 \date{}
 
 \begin{document}
@@ -44,11 +53,11 @@ GAN-generated images are increasingly bundled with small annotated satellite dat
 
 \section{Introduction}
 
-Pixel-level road annotation is expensive, and conditional generative models offer a shortcut: Pix2Pix \citep{isola2017} translates a road mask into a plausible satellite image, so new mask layouts give new training pairs with perfect label alignment. Some public datasets, including the one studied here, bundle such GAN-generated training images with the real ones, and studies that use them, including our own earlier work, have reported large improvements. Practitioners nevertheless face three unanswered questions. How much of a synthetic set is genuinely new content? How much real-image benefit does it provide once the evaluation is clean? And can the useful synthetic images be selected in advance?
+Pixel-level road annotation is expensive, and conditional generative models offer a shortcut: Pix2Pix \citep{isola2017} translates a road mask into a plausible satellite image, so new mask layouts give new training pairs with perfect label alignment. Some public datasets, including the one studied here, bundle such GAN-generated training images with the real ones, and studies that use them, including the author's own earlier work, have reported large improvements. Practitioners nevertheless face three unanswered questions. How much of a synthetic set is genuinely new content? How much real-image benefit does it provide once the evaluation is clean? And can the useful synthetic images be selected in advance?
 
 We answer all three for the Kaggle dataset \emph{Satellite Images for Road Segmentation} \citep{sanadalali}, which ships 100 annotated satellite images and 1{,}003 Pix2Pix-generated pairs. The study is a corrected and extended version of a conference submission that reported a rise in Attention U-Net Dice from 0.81 to 0.96 when the synthetic images were added. Reviewers objected that the numbers came from a validation split drawn from the pooled real and synthetic images, and asked whether the synthetic set was ``artificially repeated''. Both objections turn out to be exactly right, and answering them properly produces findings that we believe are more useful than the original claim.
 
-The contributions are as follows. (i) A file-level audit shows that the 1{,}003 synthetic pairs contain 106 distinct images and 75 distinct masks, each duplicated about twelve times. (ii) Under a leakage-free, compute-matched protocol with 15 paired replicates per condition, we measure the real benefit of the synthetic data on held-out real images (3.3 Dice points from the 106 unique images), show that training on the duplicated files as shipped is significantly worse than training on the unique images, and quantify the sevenfold inflation caused by validating on the pooled set. (iii) We show that query-by-committee selection of synthetic images fails on the duplicated set, because identical files receive identical scores and any ranking collapses to a few unique images, but succeeds after deduplication: the 50 most-disputed unique images match the full unique set and outperform random and agreement-based selections, with the lowest seed sensitivity of any condition. Code, the frozen split file, committee scores and all per-run results are released.\footnote{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
+The contributions are as follows. (i) A file-level audit shows that the 1{,}003 synthetic pairs contain 106 distinct images and 75 distinct masks, each duplicated about twelve times. (ii) Under a leakage-free, compute-matched protocol with 15 paired replicates per condition, we measure the real benefit of the synthetic data on held-out real images (3.3 Dice points from the 106 unique images), show that training on the duplicated files as shipped is significantly worse than training on the unique images, and quantify the sevenfold inflation caused by validating on the pooled set. (iii) We show that query-by-committee selection of synthetic images fails on the duplicated set, because identical files receive identical scores and any ranking collapses to a few unique images, but succeeds after deduplication: the 50 most-disputed unique images match the full unique set and outperform random and agreement-based selections, with the lowest seed sensitivity of any condition. Code, the frozen split file, committee scores and all per-run results are released.\footnote{\repourl}
 
 \section{Related work}
 
@@ -193,7 +202,7 @@ middle band (50)$^\dagger$   & random (50)$^\dagger$   & $-0.015 \pm 0.011$ & 4/
 
 \section{Discussion}
 
-Three practical rules follow. \emph{Audit before use}: a GAN-expanded dataset should be hashed for exact and near duplicates, because nominal size can overstate content by an order of magnitude, repetition itself costs accuracy under a fixed budget, and per-file selection or weighting rules behave pathologically on duplicated sets. \emph{Evaluate on real images only}: hold out real images before anything synthetic is added, cross-validate on real images, and match the optimization budget across conditions; otherwise gains are inflated many-fold, as our own earlier result shows. \emph{Select by disagreement, after deduplication}: a committee of models trained on the real data, which costs nothing beyond the seeds one should be running anyway, identifies a subset of synthetic images that delivers the full benefit of the set with less than half the images and the most stable training.
+Three practical rules follow. \emph{Audit before use}: a GAN-expanded dataset should be hashed for exact and near duplicates, because nominal size can overstate content by an order of magnitude, repetition itself costs accuracy under a fixed budget, and per-file selection or weighting rules behave pathologically on duplicated sets. \emph{Evaluate on real images only}: hold out real images before anything synthetic is added, cross-validate on real images, and match the optimization budget across conditions; otherwise gains are inflated many-fold, as the author's own earlier result shows. \emph{Select by disagreement, after deduplication}: a committee of models trained on the real data, which costs nothing beyond the seeds one should be running anyway, identifies a subset of synthetic images that delivers the full benefit of the set with less than half the images and the most stable training.
 
 The modest size of the real benefit, about three Dice points from 106 unique synthetic images derived from 75 masks, bounds what Pix2Pix expansion offers here. How the 75 synthetic masks were produced is not documented; if, as their layouts suggest, they were derived from the 100 real masks, the generator's effective diversity is limited by construction. Whether a diffusion model or a larger pool of independent masks would help more is an open question that our protocol makes cheap to answer, and disagreement-based selection is most useful precisely when the candidate pool is large.
 
@@ -204,19 +213,19 @@ The modest size of the real benefit, about three Dice points from 106 unique syn
 A public GAN-expanded road dataset advertised as 1{,}003 synthetic images contains 106, each repeated twelve times. Under a leakage-free, compute-matched, 15-replicate protocol those images improve Attention U-Net road segmentation on real held-out imagery by 3.3 Dice points, the repeated copies reduce that benefit, and validating on the pooled set inflates it sevenfold. Committee-disagreement selection of synthetic images fails on the duplicated set, where it collapses to a handful of unique images, but after deduplication the 50 most-disputed images match the full unique set, beat random and agreement-based selection, and halve seed sensitivity. Deduplicating synthetic sets, evaluating on real images only, and selecting synthetic images by committee disagreement should be default practice for GAN-expanded remote-sensing datasets.
 
 \section*{Acknowledgments}
-\tbd{Acknowledgments, if any.}
+The author acknowledges the use of a generative AI assistant (Claude, Anthropic) for writing assistance and for help with the experimental pipeline code, as detailed in the declaration below.
 
 \section*{Disclosure statement}
-The authors report there are no competing interests to declare.
+The author reports there are no competing interests to declare.
 
 \section*{Funding}
-\tbd{No funding was obtained for the reported work. / This work was supported by \ldots}
+No funding was obtained for the reported work.
 
 \section*{Declaration of generative AI use}
-Generative AI (Claude, Anthropic) was used to assist in writing the experimental pipeline code and in language editing of this manuscript. It was not used to generate data, results or references. The study design, execution, analysis and conclusions are the authors' own, and all reported numbers were produced by the released code.
+Generative AI (Claude, Anthropic) was used to assist in writing the experimental pipeline code and in language editing of this manuscript. It was not used to generate data, results or references. The study design, execution, analysis and conclusions are the author's own, and all reported numbers were produced by the released code.
 
 \section*{Data availability statement}
-The dataset is publicly available on Kaggle \citep{sanadalali}. Code, the frozen split file, committee scores and all per-run result files that support the findings are openly available at \url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}.
+The dataset is publicly available on Kaggle \citep{sanadalali}. Code, the frozen split file, committee scores and all per-run result files that support the findings are openly available at \repourl.
 
 \bibliographystyle{apalike}
 \begin{thebibliography}{99}
