@@ -128,10 +128,10 @@ Duplicated   & + all            & 1{,}003 & 106  & $0.828 \pm 0.010$ & $0.726 \p
              & + most-agreed    & 250     & 26   & $0.803 \pm 0.007$ & $0.702 \pm 0.010$ & 0.007 \\
              & + most-disputed  & 250     & 26   & $0.798 \pm 0.021$ & $0.677 \pm 0.027$ & 0.017 \\
 \midrule
-Deduplicated & + all-unique     & 106     & 106  & $\mathbf{0.839 \pm 0.014}$ & $\mathbf{0.740 \pm 0.017}$ & 0.013 \\
+Deduplicated & + all-unique     & 106     & 106  & $\mathbf{0.839 \pm 0.014}$ & $\mathbf{0.741 \pm 0.018}$ & 0.013 \\
              & + random         & 50      & 50   & $0.830 \pm 0.013$ & $0.733 \pm 0.015$ & 0.012 \\
              & + most-agreed    & 50      & 50   & $0.812 \pm 0.010$ & $0.712 \pm 0.011$ & 0.009 \\
-             & + middle band    & 50      & 50   & $0.815 \pm 0.013$ & $0.715 \pm 0.019$ & 0.012 \\
+             & + middle band    & 50      & 50   & $0.815 \pm 0.013$ & $0.716 \pm 0.019$ & 0.012 \\
              & + most-disputed  & 50      & 50   & $\mathbf{0.839 \pm 0.009}$ & $0.738 \pm 0.012$ & $\mathbf{0.007}$ \\
 \bottomrule
 \end{tabular}
@@ -158,7 +158,7 @@ all-unique (106)$^\dagger$   & all (1{,}003)           & $+0.011 \pm 0.007$ & 13
 all-unique (106)$^\dagger$   & real only               & $+0.033 \pm 0.014$ & 13/15 & $3.1\times10^{-4}$ & $1.3\times10^{-4}$ \\
 random (50)$^\dagger$        & real only               & $+0.024 \pm 0.011$ & 13/15 & $8.5\times10^{-4}$ & $2.8\times10^{-4}$ \\
 most-disputed (50)$^\dagger$ & real only               & $+0.033 \pm 0.007$ & 15/15 & $6.1\times10^{-5}$ & $7.1\times10^{-8}$ \\
-most-disputed (50)$^\dagger$ & random (50)$^\dagger$   & $+0.008 \pm 0.009$ & 11/15 & 0.047 & 0.070 \\
+most-disputed (50)$^\dagger$ & random (50)$^\dagger$   & $+0.008 \pm 0.009$ & 11/15 & 0.048 & 0.070 \\
 most-disputed (50)$^\dagger$ & all-unique (106)$^\dagger$ & $-0.001 \pm 0.011$ & 10/15 & 0.80 & 0.90 \\
 most-disputed (50)$^\dagger$ & most-agreed (50)$^\dagger$ & $+0.026 \pm 0.008$ & 14/15 & $1.2\times10^{-4}$ & $8.9\times10^{-6}$ \\
 most-agreed (50)$^\dagger$   & random (50)$^\dagger$   & $-0.018 \pm 0.008$ & 2/15  & $6.1\times10^{-4}$ & $3.8\times10^{-4}$ \\
@@ -189,7 +189,7 @@ middle band (50)$^\dagger$   & random (50)$^\dagger$   & $-0.015 \pm 0.011$ & 4/
 
 \paragraph{On the duplicated set, committee selection collapses diversity and loses to random.} Because identical files receive identical scores, ranking by committee disagreement selects whole groups of copies: the 250 most-agreed files contain 26 unique images (range 24--27) and so do the 250 most-disputed, against 81 for a random draw. Both selections lose to random in nearly every replicate ($\Delta=-0.029$ and $-0.033$ Dice, 0/15 and 1/15 wins, $p<10^{-3}$) and neither differs significantly from using no synthetic data at all (Figure~\ref{fig:paired}, left). This is the realistic setting for a practitioner who downloads a GAN-expanded dataset and applies a per-image score, and the lesson is that any such score must be applied after deduplication.
 
-\paragraph{After deduplication, disagreement selection works.} With one file per unique image, the ordering reverses (Figure~\ref{fig:conditions}, bottom; Figure~\ref{fig:paired}, right). The 50 most-disputed unique images reach Dice 0.839, indistinguishable from the full set of 106 ($\Delta=-0.001$, $p=0.8$) while using less than half of it, above a random 50 in 11 of 15 replicates ($\Delta=+0.008$; Wilcoxon $p=0.047$, paired $t$ $p=0.07$), above the 50 most-agreed images by 2.6 points (14/15, $p<10^{-3}$), and above real-only data in every replicate. They also give the lowest seed sensitivity of any condition (0.007, half that of real-only training). The 50 most-agreed images and the middle band are both significantly worse than random and add little over real data alone. This is the classical query-by-committee ordering \citep{seung1992}: the images on which independently trained models disagree are the informative ones.
+\paragraph{After deduplication, disagreement selection works.} With one file per unique image, the ordering reverses (Figure~\ref{fig:conditions}, bottom; Figure~\ref{fig:paired}, right). The 50 most-disputed unique images reach Dice 0.839, indistinguishable from the full set of 106 ($\Delta=-0.001$, $p=0.8$) while using less than half of it, above a random 50 in 11 of 15 replicates ($\Delta=+0.008$; Wilcoxon $p=0.048$, paired $t$ $p=0.07$), above the 50 most-agreed images by 2.6 points (14/15, $p<10^{-3}$), and above real-only data in every replicate. They also give the lowest seed sensitivity of any condition (0.007, half that of real-only training). The 50 most-agreed images and the middle band are both significantly worse than random and add little over real data alone. This is the classical query-by-committee ordering \citep{seung1992}: the images on which independently trained models disagree are the informative ones.
 
 \begin{figure}[t]
 \centering
