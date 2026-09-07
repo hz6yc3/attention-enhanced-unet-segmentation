@@ -15,8 +15,7 @@
 % both an anonymous and a with-author-details manuscript; figures 300 dpi
 % colour, supplied separately at revision (JPEG/TIFF/PS preferred).
 %
-% Text marked \tbd{...} depends on the deduplicated-selection experiment
-% (results/runs/attention_u*) and is filled in once those 75 runs finish.
+% Remaining \tbd{...} markers are author-supplied items (authors, funding).
 \documentclass[11pt]{article}
 \usepackage[a4paper,margin=3cm]{geometry}
 \usepackage{amsmath,amssymb}
@@ -30,18 +29,18 @@
 \singlespacing
 \newcommand{\tbd}[1]{\textcolor{red}{[#1]}}
 
-\title{A Thousand Synthetic Images That Were One Hundred: Duplication, Evaluation Leakage and the Real Value of GAN-Expanded Data for Small-Data Road Segmentation}
-\author{Anonymous Author(s)}
+\title{Deduplicate, Then Disagree: What GAN-Synthetic Imagery Is Worth for Small-Data Satellite Road Segmentation, and How to Select It}
+\author{\tbd{Author names, affiliations, ORCIDs; corresponding author email}}
 \date{}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-GAN-generated images are increasingly bundled with small annotated remote-sensing datasets, but their value is rarely measured cleanly. Auditing a public road-segmentation dataset (100 real images plus 1{,}003 Pix2Pix-generated pairs), we find only 106 distinct synthetic images and 75 distinct masks, each file repeated about twelve times. Under a protocol with a fixed real test set, five-fold real-only cross-validation, synthetic data confined to training, matched optimizer budgets and 15 paired replicates, the synthetic data raises Attention U-Net test Dice from 0.806 to 0.832; a random quarter of the files captures the whole gain, and validating on the pooled real--synthetic set inflates it about sevenfold. Selecting synthetic images by the disagreement of a committee of real-trained models collapses to 26 unique images on the duplicated set and loses to random selection in 15/15 and 14/15 replicates\tbd{; after deduplication, \ldots}. Committee disagreement mainly tracks mismatch between a synthetic image and its mask and is confounded with road density. Auditing synthetic sets for duplicates, evaluating on real images only, matching compute across conditions and sampling synthetic images uniformly are recommended.
+GAN-generated images are increasingly bundled with small annotated satellite datasets, but their value for road extraction is rarely measured cleanly. Auditing a public road-segmentation dataset (100 real images plus 1{,}003 Pix2Pix-generated pairs), we find only 106 distinct synthetic images and 75 distinct masks, each file repeated about twelve times. Under a protocol with a fixed real test set, five-fold real-only cross-validation, synthetic data confined to training, matched optimizer budgets and 15 paired replicates per condition, the synthetic images raise Attention U-Net test Dice from 0.806 to 0.839 once duplicates are removed; training on the 1{,}003 files as shipped is significantly worse than training on the 106 unique images, and validating on the pooled real--synthetic set inflates the apparent benefit about sevenfold. We then select synthetic images by the disagreement of a committee of real-trained models. On the duplicated set every score-based selection collapses to 26 unique images and loses to random sampling. After deduplication, the 50 most-disputed images match the full unique set, exceed a random 50 in 11 of 15 replicates, beat the 50 most-agreed images by 2.6 Dice points and give the lowest seed sensitivity of any condition. Deduplication, real-only evaluation and disagreement-based selection are recommended.
 \end{abstract}
 
-\noindent\textbf{Keywords:} road extraction; synthetic data; Pix2Pix; data duplication; evaluation leakage; Attention U-Net; data selection
+\noindent\textbf{Keywords:} road extraction; synthetic data; Pix2Pix; data duplication; evaluation leakage; query by committee; Attention U-Net
 
 \section{Introduction}
 
@@ -49,11 +48,11 @@ Pixel-level road annotation is expensive, and conditional generative models offe
 
 We answer all three for the Kaggle dataset \emph{Satellite Images for Road Segmentation} \citep{sanadalali}, which ships 100 annotated satellite images and 1{,}003 Pix2Pix-generated pairs. The study is a corrected and extended version of a conference submission that reported a rise in Attention U-Net Dice from 0.81 to 0.96 when the synthetic images were added. Reviewers objected that the numbers came from a validation split drawn from the pooled real and synthetic images, and asked whether the synthetic set was ``artificially repeated''. Both objections turn out to be exactly right, and answering them properly produces findings that we believe are more useful than the original claim.
 
-The contributions are as follows. (i) A file-level audit shows that the 1{,}003 synthetic pairs contain 106 distinct images and 75 distinct masks, each duplicated about twelve times, with no synthetic mask equal to a real mask. (ii) Under a leakage-free, compute-matched protocol with 15 paired replicates per condition, we measure the real benefit of the synthetic data (2.6 Dice points on held-out real images), show that a random quarter of the files captures all of it, and quantify the sevenfold inflation caused by validating on the pooled set. (iii) We test query-by-committee selection of synthetic images in both directions, on the duplicated set and \tbd{after deduplication}, and explain the outcome through diagnostics linking committee disagreement to image--mask mismatch and road density. Code, the frozen split file, committee scores and all per-run results are released.\footnote{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
+The contributions are as follows. (i) A file-level audit shows that the 1{,}003 synthetic pairs contain 106 distinct images and 75 distinct masks, each duplicated about twelve times. (ii) Under a leakage-free, compute-matched protocol with 15 paired replicates per condition, we measure the real benefit of the synthetic data on held-out real images (3.3 Dice points from the 106 unique images), show that training on the duplicated files as shipped is significantly worse than training on the unique images, and quantify the sevenfold inflation caused by validating on the pooled set. (iii) We show that query-by-committee selection of synthetic images fails on the duplicated set, because identical files receive identical scores and any ranking collapses to a few unique images, but succeeds after deduplication: the 50 most-disputed unique images match the full unique set and outperform random and agreement-based selections, with the lowest seed sensitivity of any condition. Code, the frozen split file, committee scores and all per-run results are released.\footnote{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
 
 \section{Related work}
 
-U-Net \citep{ronneberger2015} and its variants dominate road extraction from overhead imagery \citep{zhang2018,zhou2018,batra2019}. Attention U-Net \citep{oktay2018} adds additive attention gates to the skip connections, a modification of about 1\% more parameters that suppresses background features; it is the architecture used throughout. GAN-based augmentation \citep{goodfellow2014,isola2017} is widely used against annotation scarcity in remote sensing, but evaluation practice is inconsistent and gains are often measured on splits that include synthetic images. Duplicate and near-duplicate contamination has been documented in standard vision benchmarks, where copies shared between training and test sets inflate test accuracy \citep{barz2020}; to our knowledge it has not been reported for a GAN-expanded remote-sensing training set, where its effect is different: it inflates the \emph{apparent size} of the training set rather than the test score. Query-by-committee \citep{seung1992,settles2009} selects unlabelled samples on which independently trained models disagree; its use for choosing among \emph{synthetic} samples, whose labels are fixed by construction, has not been evaluated on a segmentation task with a real held-out test set.
+U-Net \citep{ronneberger2015} and its variants dominate road extraction from overhead imagery \citep{zhang2018,zhou2018,batra2019}. Attention U-Net \citep{oktay2018} adds additive attention gates to the skip connections, a modification of about 1\% more parameters that suppresses background features; it is the architecture used throughout. GAN-based augmentation \citep{goodfellow2014,isola2017} is widely used against annotation scarcity in remote sensing, but evaluation practice is inconsistent and gains are often measured on splits that include synthetic images. Duplicate and near-duplicate contamination has been documented in standard vision benchmarks, where copies shared between training and test sets inflate test accuracy \citep{barz2020}; to our knowledge it has not been reported for a GAN-expanded remote-sensing training set, where its effect is different: it inflates the \emph{apparent size} of the training set and defeats per-file selection rules. Query-by-committee \citep{seung1992,settles2009} selects unlabelled samples on which independently trained models disagree; its use for choosing among \emph{synthetic} samples, whose labels are fixed by construction, has not been evaluated on a segmentation task with a real held-out test set.
 
 \section{Materials and methods}
 
@@ -61,7 +60,7 @@ U-Net \citep{ronneberger2015} and its variants dominate road extraction from ove
 
 The dataset provides 100 real RGB satellite images of $400\times400$ pixels with binary road masks (road fraction $20.3\%\pm7.2\%$), 50 unlabelled test images that we do not use, and 1{,}003 $416\times416$ image--mask pairs that the dataset page describes as generated with Pix2Pix. The provenance of the synthetic masks is not documented on the dataset page. Figure~\ref{fig:dataset} shows real samples.
 
-Hashing every synthetic file reveals that the set is heavily duplicated. There are \textbf{106 distinct synthetic images} and \textbf{75 distinct synthetic masks}: 45 masks were rendered once, 29 twice and one three times, and every resulting image was then copied, byte for byte, between 1 and 14 times (median 12). Every copy of an image carries the same mask. None of the 75 synthetic masks is pixel-identical to a real mask, or to a flipped or rotated real mask, after resizing the real masks to the synthetic resolution; we did not search for near-duplicates of real masks. The synthetic set therefore does not copy real test images outright, but its effective size is about a tenth of its nominal size. Table~\ref{tab:audit} summarizes the audit. The consequence for training is that ``1{,}003 synthetic images'' is a twelve-fold oversampling of 106, and that any per-file selection rule will select whole groups of identical copies.
+Hashing every synthetic file reveals that the set is heavily duplicated. There are \textbf{106 distinct synthetic images} and \textbf{75 distinct synthetic masks}: 45 masks were rendered once, 29 twice and one three times, and every resulting image was then copied, byte for byte, between 1 and 14 times (median 12). Every copy of an image carries the same mask. None of the 75 synthetic masks is pixel-identical to a real mask, or to a flipped or rotated real mask, after resizing the real masks to the synthetic resolution; we did not search for near-duplicates of real masks. The synthetic set therefore does not copy real test images outright, but its effective size is about a tenth of its nominal size. Table~\ref{tab:audit} summarizes the audit. Two consequences follow for training: ``1{,}003 synthetic images'' is a twelve-fold oversampling of 106, and any per-file selection rule will select whole groups of identical copies.
 
 \begin{table}[t]
 \centering
@@ -100,82 +99,88 @@ Distinct committee-score pairs (fold 0) & 93 \\
 
 For each fold, the three real-only models form a committee. Each synthetic image is passed through the committee, predictions are binarized at 0.5, and the \emph{committee disagreement} is the mean pairwise $1-\mathrm{Dice}$ between the three predictions. The committee is trained only on the real training folds, so the score never sees validation or test images. For diagnosis we also record each member's $1-\mathrm{Dice}$ against the synthetic mask (\emph{label disagreement}) and the mask's road fraction. Identical files receive identical scores.
 
-Two families of conditions are compared, all with the 64 real training images. On the \textbf{duplicated set} (files as shipped): \emph{all} (1{,}003 files); \emph{random} (250 files drawn uniformly, re-drawn per fold and seed); \emph{most-agreed} (250 lowest-disagreement files, i.e.\ filtering suspected artefacts); and \emph{most-disputed} (250 highest-disagreement files, i.e.\ uncertainty sampling). On the \textbf{deduplicated set} (one file per distinct image): \emph{all-unique} (106); and \emph{random}, \emph{most-agreed}, \emph{most-disputed} and \emph{middle band} (the 50 images centred on the median score, discarding both extremes), each with 50 unique images. Together with the real-only baseline this is $10$ conditions $\times 15$ replicates $= 150$ training runs plus five scoring passes.
+Two families of conditions are compared, all with the 64 real training images. On the \textbf{duplicated set} (files as shipped): \emph{all} (1{,}003 files); \emph{random} (250 files drawn uniformly, re-drawn per fold and seed); \emph{most-agreed} (250 lowest-disagreement files, i.e.\ filtering suspected artefacts); and \emph{most-disputed} (250 highest-disagreement files, i.e.\ uncertainty sampling). On the \textbf{deduplicated set} (one file per distinct image): \emph{all-unique} (106); and \emph{random}, \emph{most-agreed}, \emph{middle band} (the 50 images centred on the median score) and \emph{most-disputed}, each with 50 unique images. Together with the real-only baseline this is $10$ conditions $\times 15$ replicates $= 150$ training runs plus five scoring passes, about 15 GPU-hours on a single T4.
 
 \section{Results}
 
 \begin{table}[t]
 \centering
-\caption{Test results on the 20 held-out real images (mean $\pm$ SD over 15 fold$\times$seed replicates). ``Unique'' is the mean number of distinct synthetic images actually present in the training set. Seed sensitivity is the SD across seeds averaged over folds. All runs use 64 real images and an identical 1{,}200-step budget.}
+\caption{Test results on the 20 held-out real images (mean $\pm$ SD over 15 fold$\times$seed replicates). ``Unique'' is the mean number of distinct synthetic images present in the training set. Seed sensitivity is the SD across seeds averaged over folds. All runs use 64 real images and an identical 1{,}200-step budget.}
 \label{tab:main}
 \small
 \begin{tabular}{llrrrrr}
 \toprule
 Set & Condition & Files & Unique & Dice & IoU & Seed sens. \\
 \midrule
---          & Real only        & 0       & 0    & $0.806 \pm 0.015$ & $0.698 \pm 0.018$ & 0.014 \\
+--           & Real only        & 0       & 0    & $0.806 \pm 0.015$ & $0.698 \pm 0.018$ & 0.014 \\
 \midrule
-Duplicated  & + all            & 1{,}003 & 106  & $0.828 \pm 0.010$ & $0.726 \pm 0.013$ & 0.009 \\
-            & + random         & 250     & 81   & $\mathbf{0.832 \pm 0.011}$ & $\mathbf{0.731 \pm 0.016}$ & 0.012 \\
-            & + most-agreed    & 250     & 26   & $0.803 \pm 0.007$ & $0.702 \pm 0.010$ & 0.007 \\
-            & + most-disputed  & 250     & 26   & $0.798 \pm 0.021$ & $0.677 \pm 0.027$ & 0.017 \\
+Duplicated   & + all            & 1{,}003 & 106  & $0.828 \pm 0.010$ & $0.726 \pm 0.013$ & 0.009 \\
+             & + random         & 250     & 81   & $0.832 \pm 0.011$ & $0.731 \pm 0.016$ & 0.012 \\
+             & + most-agreed    & 250     & 26   & $0.803 \pm 0.007$ & $0.702 \pm 0.010$ & 0.007 \\
+             & + most-disputed  & 250     & 26   & $0.798 \pm 0.021$ & $0.677 \pm 0.027$ & 0.017 \\
 \midrule
-Deduplicated & + all-unique    & 106     & 106  & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx} \\
-            & + random         & 50      & 50   & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx} \\
-            & + most-agreed    & 50      & 50   & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx} \\
-            & + middle band    & 50      & 50   & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx} \\
-            & + most-disputed  & 50      & 50   & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx $\pm$ x.xxx} & \tbd{x.xxx} \\
+Deduplicated & + all-unique     & 106     & 106  & $\mathbf{0.839 \pm 0.014}$ & $\mathbf{0.740 \pm 0.017}$ & 0.013 \\
+             & + random         & 50      & 50   & $0.830 \pm 0.013$ & $0.733 \pm 0.015$ & 0.012 \\
+             & + most-agreed    & 50      & 50   & $0.812 \pm 0.010$ & $0.712 \pm 0.011$ & 0.009 \\
+             & + middle band    & 50      & 50   & $0.815 \pm 0.013$ & $0.715 \pm 0.019$ & 0.012 \\
+             & + most-disputed  & 50      & 50   & $\mathbf{0.839 \pm 0.009}$ & $0.738 \pm 0.012$ & $\mathbf{0.007}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Paired comparisons of test Dice over the 15 matched (fold, seed) replicates. $\Delta$ is the mean difference $a-b$ with 95\% confidence interval; ``wins'' counts replicates in which $a$ exceeds $b$. Rows marked $\dagger$ are on the deduplicated set.}
+\caption{Paired comparisons of test Dice over the 15 matched (fold, seed) replicates. $\Delta$ is the mean difference $a-b$ with 95\% confidence interval; ``wins'' counts replicates in which $a$ exceeds $b$. Numbers in parentheses are files (duplicated set) or unique images (deduplicated set, marked $\dagger$).}
 \label{tab:paired}
 \small
 \begin{tabular}{llrrrr}
 \toprule
 $a$ & $b$ & $\Delta$ Dice & Wins & Wilcoxon $p$ & Paired $t$ $p$ \\
 \midrule
+\multicolumn{6}{l}{\emph{Duplicated set}} \\
 random (250)         & real only    & $+0.026 \pm 0.010$ & 13/15 & $3.1\times10^{-4}$ & $8.4\times10^{-5}$ \\
 all (1{,}003)        & real only    & $+0.022 \pm 0.010$ & 14/15 & $1.2\times10^{-3}$ & $3.4\times10^{-4}$ \\
 all (1{,}003)        & random (250) & $-0.004 \pm 0.005$ & 3/15  & 0.064 & 0.14 \\
 most-agreed (250)    & random (250) & $-0.029 \pm 0.006$ & 0/15  & $6.1\times10^{-5}$ & $1.1\times10^{-7}$ \\
 most-disputed (250)  & random (250) & $-0.033 \pm 0.011$ & 1/15  & $1.2\times10^{-4}$ & $1.3\times10^{-5}$ \\
-most-agreed (250)    & real only    & $-0.003 \pm 0.009$ & 7/15  & 0.60 & 0.50 \\
-most-disputed (250)  & real only    & $-0.008 \pm 0.012$ & 5/15  & 0.28 & 0.27 \\
 \midrule
-all-unique (106)$^\dagger$ & all (1{,}003) & \tbd{$\pm$} & \tbd{/15} & \tbd{} & \tbd{} \\
-random (50)$^\dagger$      & real only     & \tbd{$\pm$} & \tbd{/15} & \tbd{} & \tbd{} \\
-most-agreed (50)$^\dagger$ & random (50)$^\dagger$   & \tbd{$\pm$} & \tbd{/15} & \tbd{} & \tbd{} \\
-middle band (50)$^\dagger$ & random (50)$^\dagger$   & \tbd{$\pm$} & \tbd{/15} & \tbd{} & \tbd{} \\
-most-disputed (50)$^\dagger$ & random (50)$^\dagger$ & \tbd{$\pm$} & \tbd{/15} & \tbd{} & \tbd{} \\
+\multicolumn{6}{l}{\emph{Deduplicated set}} \\
+all-unique (106)$^\dagger$   & all (1{,}003)           & $+0.011 \pm 0.007$ & 13/15 & $6.7\times10^{-3}$ & $4.7\times10^{-3}$ \\
+all-unique (106)$^\dagger$   & real only               & $+0.033 \pm 0.014$ & 13/15 & $3.1\times10^{-4}$ & $1.3\times10^{-4}$ \\
+random (50)$^\dagger$        & real only               & $+0.024 \pm 0.011$ & 13/15 & $8.5\times10^{-4}$ & $2.8\times10^{-4}$ \\
+most-disputed (50)$^\dagger$ & real only               & $+0.033 \pm 0.007$ & 15/15 & $6.1\times10^{-5}$ & $7.1\times10^{-8}$ \\
+most-disputed (50)$^\dagger$ & random (50)$^\dagger$   & $+0.008 \pm 0.009$ & 11/15 & 0.047 & 0.070 \\
+most-disputed (50)$^\dagger$ & all-unique (106)$^\dagger$ & $-0.001 \pm 0.011$ & 10/15 & 0.80 & 0.90 \\
+most-disputed (50)$^\dagger$ & most-agreed (50)$^\dagger$ & $+0.026 \pm 0.008$ & 14/15 & $1.2\times10^{-4}$ & $8.9\times10^{-6}$ \\
+most-agreed (50)$^\dagger$   & random (50)$^\dagger$   & $-0.018 \pm 0.008$ & 2/15  & $6.1\times10^{-4}$ & $3.8\times10^{-4}$ \\
+middle band (50)$^\dagger$   & random (50)$^\dagger$   & $-0.015 \pm 0.011$ & 4/15  & 0.018 & 0.010 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.9\linewidth]{fig_conditions.png}
-\caption{Test Dice of every replicate per condition on the duplicated set. Grey lines join the same (fold, seed) across conditions; black bars show mean $\pm$ SD.}
+\includegraphics[width=0.9\linewidth]{fig_conditions.png}\\[2pt]
+\includegraphics[width=0.9\linewidth]{fig_conditions_dedup.png}
+\caption{Test Dice of every replicate per condition on the duplicated set as shipped (top) and after deduplication (bottom). Grey lines join the same (fold, seed) across conditions; black bars show mean $\pm$ SD. Both panels share the vertical scale.}
 \label{fig:conditions}
 \end{figure}
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.62\linewidth]{fig_paired.png}
-\caption{Paired differences in test Dice relative to the random 250-file subset. Diamonds and bars show the mean and 95\% confidence interval over 15 replicates.}
+\includegraphics[width=0.48\linewidth]{fig_paired.png}\hfill
+\includegraphics[width=0.48\linewidth]{fig_paired_dedup.png}
+\caption{Paired differences in test Dice relative to the random subset of the same family: 250 files on the duplicated set (left) and 50 unique images on the deduplicated set (right). Diamonds and bars show the mean and 95\% confidence interval over 15 replicates.}
 \label{fig:paired}
 \end{figure}
 
-\paragraph{The real benefit is 2.6 Dice points, from about 100 unique images.} Table~\ref{tab:main} and Figure~\ref{fig:conditions} summarize the duplicated-set runs. Adding synthetic data raises test Dice from 0.806 to 0.832 with a random 250-file subset ($+2.6$ points, 13/15 wins, Table~\ref{tab:paired}) and to 0.828 with all 1{,}003 files. The random subset already contains 81 of the 106 unique images on average, which is why the remaining 753 files add nothing; the full set is in fact marginally worse (3/15 wins, $p=0.06$), consistent with twelve-fold oversampling of the same content under a fixed budget. \tbd{The deduplicated all-unique condition, 106 files with no repetition, reaches Dice x.xxx, [better/no different] than the 1{,}003-file set (Table~\ref{tab:paired}), confirming that the copies contribute nothing.} Synthetic data also reduces seed sensitivity from 0.014 to 0.009--0.012, a 20--35\% reduction.
+\paragraph{Synthetic data helps by about three Dice points, and the copies hurt.} Table~\ref{tab:main} and Figure~\ref{fig:conditions} summarize the 150 runs. Training on the 106 unique synthetic images raises test Dice from 0.806 to 0.839 ($+3.3$ points, 13/15 wins, Table~\ref{tab:paired}). Training on the 1{,}003 files as shipped reaches only 0.828: the same content with twelve-fold repetition is significantly worse than the unique images under an identical budget ($\Delta=-0.011$, 13/15, $p<0.01$), and no better than a random 250-file subset that happens to contain 81 unique images. Synthetic data also reduces seed sensitivity, from 0.014 to 0.009--0.013.
 
-\paragraph{Evaluation on the pooled set inflates the benefit sevenfold.} Under the earlier pooled-validation protocol, the same architecture and data showed a gain of 15.1 Dice points from synthetic expansion (mean validation Dice 0.810 to 0.961 over three seeds). Under the real-only protocol the gain is 2.2 points for the same 1{,}003 files. Two mechanisms combine. Synthetic images are easier than real ones, having perfect label alignment and no annotation noise. And because each synthetic image appears twelve times, a validation split drawn from the pool almost always contains copies of images that are also in the training split, so the pooled protocol partly measures memorization.
+\paragraph{Evaluation on the pooled set inflates the benefit sevenfold.} Under the earlier pooled-validation protocol, the same architecture and data showed a gain of 15.1 Dice points from synthetic expansion (mean validation Dice 0.810 to 0.961 over three seeds). Under the real-only protocol the gain is 2.2 points for the same 1{,}003 files. Two mechanisms combine: synthetic images are easier than real ones, having perfect label alignment and no annotation noise, and because each synthetic image appears twelve times, a validation split drawn from the pool almost always contains copies of images that are also in the training split, so the pooled protocol partly measures memorization.
 
-\paragraph{On the duplicated set, committee selection collapses diversity and loses to random.} Because identical files receive identical scores, ranking by committee disagreement selects whole groups of copies: the 250 most-agreed files contain 26 unique images (range 24--27) and so do the 250 most-disputed, against 81 for a random draw. Both selections lose to random in nearly every replicate ($\Delta=-0.029$ and $-0.033$ Dice, 0/15 and 1/15 wins, $p<10^{-3}$) and neither differs significantly from using no synthetic data at all. Figure~\ref{fig:paired} shows the paired differences. This is the realistic setting for a practitioner who downloads a GAN-expanded dataset and applies a per-image quality score, and the lesson is that any such score must be applied after deduplication.
+\paragraph{On the duplicated set, committee selection collapses diversity and loses to random.} Because identical files receive identical scores, ranking by committee disagreement selects whole groups of copies: the 250 most-agreed files contain 26 unique images (range 24--27) and so do the 250 most-disputed, against 81 for a random draw. Both selections lose to random in nearly every replicate ($\Delta=-0.029$ and $-0.033$ Dice, 0/15 and 1/15 wins, $p<10^{-3}$) and neither differs significantly from using no synthetic data at all (Figure~\ref{fig:paired}, left). This is the realistic setting for a practitioner who downloads a GAN-expanded dataset and applies a per-image score, and the lesson is that any such score must be applied after deduplication.
 
-\paragraph{After deduplication.} \tbd{Table~\ref{tab:main} (lower block) and Table~\ref{tab:paired} report the deduplicated conditions, which compare selections of equal unique size. Random 50 of 106 reaches Dice x.xxx; most-agreed x.xxx; middle band x.xxx; most-disputed x.xxx. Interpretation to be written once the runs complete: whether any score-based selection beats random at equal diversity, and whether the middle band, which discards both redundant and label-noisy images, is the best choice.}
+\paragraph{After deduplication, disagreement selection works.} With one file per unique image, the ordering reverses (Figure~\ref{fig:conditions}, bottom; Figure~\ref{fig:paired}, right). The 50 most-disputed unique images reach Dice 0.839, indistinguishable from the full set of 106 ($\Delta=-0.001$, $p=0.8$) while using less than half of it, above a random 50 in 11 of 15 replicates ($\Delta=+0.008$; Wilcoxon $p=0.047$, paired $t$ $p=0.07$), above the 50 most-agreed images by 2.6 points (14/15, $p<10^{-3}$), and above real-only data in every replicate. They also give the lowest seed sensitivity of any condition (0.007, half that of real-only training). The 50 most-agreed images and the middle band are both significantly worse than random and add little over real data alone. This is the classical query-by-committee ordering \citep{seung1992}: the images on which independently trained models disagree are the informative ones.
 
 \begin{figure}[t]
 \centering
@@ -184,19 +189,19 @@ most-disputed (50)$^\dagger$ & random (50)$^\dagger$ & \tbd{$\pm$} & \tbd{/15} &
 \label{fig:scores}
 \end{figure}
 
-\paragraph{What committee disagreement measures.} Figure~\ref{fig:scores} and the per-fold diagnostics show that committee disagreement is strongly correlated with label disagreement (Spearman $\rho=0.86$--$0.89$ across folds): the images the committee disputes are those whose rendered content does not match their mask. Mean label disagreement is 0.11 for the most-agreed subset, 0.22 overall and 0.35--0.41 for the most-disputed subset. Disagreement is also negatively correlated with road density ($\rho=-0.25$ to $-0.47$), partly because Dice is unstable on sparse masks and partly because sparse scenes are harder, so the most-agreed subset over-represents dense-road scenes (mean road fraction 0.22--0.25 versus 0.20 for real data) and the most-disputed subset under-represents them (0.14--0.17). The ranking is a stable property of the images: on average 67\% of the 250 most-agreed files coincide across committees trained on different real folds. Agreement therefore selects images the real-trained models already predict correctly, which carry little new information; disagreement selects images whose masks act as noisy labels; and both shift road density away from the real distribution. Uniform sampling preserves the distribution.
+\paragraph{What committee disagreement measures.} Figure~\ref{fig:scores} and the per-fold diagnostics show that committee disagreement is strongly correlated with label disagreement (Spearman $\rho=0.86$--$0.89$ across folds): the images the committee disputes are those whose masks contain road structure that real-trained models do not yet predict. Given the deduplicated results, this is a signal of informativeness rather than of label noise. Disagreement is also negatively correlated with road density ($\rho=-0.25$ to $-0.47$), so the most-disputed subset under-represents dense-road scenes (mean road fraction 0.14--0.17 versus 0.20 for real data) and the most-agreed subset over-represents them (0.22--0.25); the most-disputed images win despite this shift. The ranking is a stable property of the images: on average 67\% of the 250 most-agreed files coincide across committees trained on different real folds. Why, then, did the most-disputed selection fail on the duplicated set? There it consisted of 26 unique images repeated about ten times each, and the deduplicated experiment shows separately that repetition of a fixed set is harmful under a matched budget (all-unique versus all). Narrow content plus heavy repetition, not the disagreement criterion, explains the earlier loss.
 
 \section{Discussion}
 
-Three practical rules follow. \emph{Audit before use}: a GAN-expanded dataset should be hashed for exact and near duplicates, because nominal size can overstate content by an order of magnitude, and because per-file selection or weighting rules behave pathologically on duplicated sets. \emph{Evaluate on real images only}: hold out real images before anything synthetic is added, cross-validate on real images, and match the optimization budget across conditions; otherwise gains are inflated many-fold, as our own earlier result shows. \emph{Do not expect much from curation}: on this benchmark a uniform random sample of a modest number of unique synthetic images delivers the available benefit, \tbd{and score-based selection at equal diversity [does / does not] improve on it}.
+Three practical rules follow. \emph{Audit before use}: a GAN-expanded dataset should be hashed for exact and near duplicates, because nominal size can overstate content by an order of magnitude, repetition itself costs accuracy under a fixed budget, and per-file selection or weighting rules behave pathologically on duplicated sets. \emph{Evaluate on real images only}: hold out real images before anything synthetic is added, cross-validate on real images, and match the optimization budget across conditions; otherwise gains are inflated many-fold, as our own earlier result shows. \emph{Select by disagreement, after deduplication}: a committee of models trained on the real data, which costs nothing beyond the seeds one should be running anyway, identifies a subset of synthetic images that delivers the full benefit of the set with less than half the images and the most stable training.
 
-The modest size of the real benefit, 2.6 Dice points from about 100 unique synthetic images derived from 75 masks, bounds what Pix2Pix expansion can offer here. How the 75 synthetic masks were produced is not documented; if, as their layouts suggest, they were derived from the 100 real masks, the generator's effective diversity is limited by construction. Whether a diffusion model or a larger pool of independent masks would help more is an open question that our protocol makes cheap to answer.
+The modest size of the real benefit, about three Dice points from 106 unique synthetic images derived from 75 masks, bounds what Pix2Pix expansion offers here. How the 75 synthetic masks were produced is not documented; if, as their layouts suggest, they were derived from the 100 real masks, the generator's effective diversity is limited by construction. Whether a diffusion model or a larger pool of independent masks would help more is an open question that our protocol makes cheap to answer, and disagreement-based selection is most useful precisely when the candidate pool is large.
 
-\paragraph{Limitations.} The study uses one benchmark of 100 real images, one generator whose synthetic masks were produced by a third party, one architecture and two subset sizes. Absolute Dice differs by fold (Figure~\ref{fig:conditions}), reflecting the small test set; our conclusions rest on paired within-fold comparisons, which are robust to this. Baseline U-Net was not re-evaluated under the new protocol, so the architecture comparison of the earlier study is not revisited. Duplicates were detected at the byte level; near-duplicate renderings of the same mask (29 masks have two) were kept as distinct images.
+\paragraph{Limitations.} The study uses one benchmark of 100 real images, one generator whose synthetic masks were produced by a third party, one architecture and two subset sizes. Absolute Dice differs by fold (Figure~\ref{fig:conditions}), reflecting the small test set; our conclusions rest on paired within-fold comparisons, which are robust to this. The advantage of disagreement selection over random selection at equal size is modest ($+0.8$ Dice points) and significant by the Wilcoxon test but only marginally by the paired $t$-test; its advantages over agreement-based selection, over real-only training, and in seed sensitivity are large and unambiguous. Baseline U-Net was not re-evaluated under the new protocol. Duplicates were detected at the byte level; near-duplicate renderings of the same mask (29 masks have two) were kept as distinct images.
 
 \section{Conclusion}
 
-A public GAN-expanded road dataset advertised as 1{,}003 synthetic images contains 106, each repeated twelve times. Under a leakage-free, compute-matched, 15-replicate protocol those images improve Attention U-Net road segmentation on real held-out images by 2.6 Dice points, a random quarter of the files captures all of it, and validating on the pooled set inflates the benefit sevenfold. Committee-based selection of synthetic images collapses to a handful of unique images on the duplicated set and loses to random selection; \tbd{after deduplication, \ldots}. Auditing synthetic sets for duplication, evaluating on real images only, and uniform sampling of modest synthetic volumes should be default practice.
+A public GAN-expanded road dataset advertised as 1{,}003 synthetic images contains 106, each repeated twelve times. Under a leakage-free, compute-matched, 15-replicate protocol those images improve Attention U-Net road segmentation on real held-out imagery by 3.3 Dice points, the repeated copies reduce that benefit, and validating on the pooled set inflates it sevenfold. Committee-disagreement selection of synthetic images fails on the duplicated set, where it collapses to a handful of unique images, but after deduplication the 50 most-disputed images match the full unique set, beat random and agreement-based selection, and halve seed sensitivity. Deduplicating synthetic sets, evaluating on real images only, and selecting synthetic images by committee disagreement should be default practice for GAN-expanded remote-sensing datasets.
 
 \section*{Acknowledgments}
 \tbd{Acknowledgments, if any.}

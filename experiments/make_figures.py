@@ -27,10 +27,22 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-ORDER = ["real", "filtered", "random", "all", "antifiltered"]
-LABELS = {"real": "Real only", "filtered": "Most-agreed\n(filtered)", "random": "Random",
-          "all": "All synthetic", "antifiltered": "Most-disputed\n(anti-filtered)"}
-COLORS = {"real": "#6c757d", "filtered": "#1f77b4", "random": "#2ca02c", "all": "#9467bd", "antifiltered": "#d62728"}
+ORDER = ["real", "filtered", "middle", "random", "all", "antifiltered"]
+LABELS = {"real": "Real only", "filtered": "Most-agreed", "middle": "Middle band", "random": "Random",
+          "all": "All synthetic", "antifiltered": "Most-disputed"}
+COLORS = {"real": "#6c757d", "filtered": "#1f77b4", "middle": "#ff7f0e", "random": "#2ca02c",
+          "all": "#9467bd", "antifiltered": "#d62728"}
+
+
+def load_table(path):
+    """Cell-level table with columns cell, fold, seed, dice, iou (e.g. results/runs_table_all150.csv)."""
+    t = pd.read_csv(path)
+    t["dedup"] = t["cell"].str.startswith("u")
+    base = t["cell"].str.lstrip("u")
+    t["condition"] = base.str.replace(r"\d+$", "", regex=True)
+    t["k"] = base.str.extract(r"(\d+)$")[0].fillna(0).astype(int)
+    t["arch"] = "attention"
+    return t
 
 
 def load(results):
@@ -38,7 +50,8 @@ def load(results):
     for p in sorted(glob.glob(os.path.join(results, "runs", "*", "result.json"))):
         r = json.load(open(p))
         rows.append({"arch": r["arch"], "condition": r["condition"], "k": r["k"], "fold": r["fold"],
-                     "seed": r["seed"], "dice": r["test"]["dice"], "iou": r["test"]["iou"]})
+                     "seed": r["seed"], "dice": r["test"]["dice"], "iou": r["test"]["iou"],
+                     "dedup": bool(r.get("dedup", False))})
     if not rows:
         csv = os.path.join(results, "runs_table.csv")
         if os.path.exists(csv):
@@ -47,7 +60,7 @@ def load(results):
     return pd.DataFrame(rows)
 
 
-def fig_conditions(df, out):
+def fig_conditions(df, out, title=None, ylim=None):
     conds = [c for c in ORDER if c in set(df["condition"])]
     piv = df.pivot_table(index=["fold", "seed"], columns="condition", values="dice")
     fig, ax = plt.subplots(figsize=(7.2, 3.6))
@@ -66,7 +79,9 @@ def fig_conditions(df, out):
     ax.set_xticks(range(len(conds)))
     ax.set_xticklabels([LABELS[c] for c in conds], fontsize=9)
     ax.set_ylabel("Test Dice (20 held-out real images)")
-    ax.set_ylim(df["dice"].min() - 0.015, df["dice"].max() + 0.02)
+    ax.set_ylim(*(ylim or (df["dice"].min() - 0.015, df["dice"].max() + 0.02)))
+    if title:
+        ax.set_title(title, fontsize=10)
     ax.grid(axis="y", lw=0.4, alpha=0.5)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
@@ -126,14 +141,26 @@ def main():
     parser.add_argument("--results", default="results")
     parser.add_argument("--k", type=int, default=250)
     parser.add_argument("--arch", default="attention")
+    parser.add_argument("--k-dedup", type=int, default=50)
+    parser.add_argument("--table", default=None, help="cell-level CSV to use instead of result.json files")
     args = parser.parse_args()
     out = os.path.join(args.results, "figures")
     os.makedirs(out, exist_ok=True)
-    df = load(args.results)
-    df = df[(df["arch"] == args.arch) & ((df["k"] == args.k) | df["condition"].isin(["real", "all"]))]
-    fig_conditions(df, os.path.join(out, "fig_conditions.png"))
-    fig_paired(df, os.path.join(out, "fig_paired.png"))
+    df = load_table(args.table) if args.table else load(args.results)
+    df = df[df["arch"] == args.arch]
+    real = df[df["condition"] == "real"]
+    dup = df[(~df["dedup"]) & ((df["k"] == args.k) | (df["condition"] == "all"))]
+    ded = df[(df["dedup"]) & ((df["k"] == args.k_dedup) | (df["condition"] == "all"))]
+    ylim = (df["dice"].min() - 0.015, df["dice"].max() + 0.02)
+    fig_conditions(dup, os.path.join(out, "fig_conditions.png"),
+                   title=f"Duplicated set as shipped (1,003 files; subsets of {args.k} files)", ylim=ylim)
+    fig_paired(dup, os.path.join(out, "fig_paired.png"))
     fig_scores(args.results, os.path.join(out, "fig_scores.png"), args.k)
+    if len(ded):
+        ded = pd.concat([real, ded])
+        fig_conditions(ded, os.path.join(out, "fig_conditions_dedup.png"),
+                       title=f"Deduplicated set (106 unique images; subsets of {args.k_dedup} images)", ylim=ylim)
+        fig_paired(ded, os.path.join(out, "fig_paired_dedup.png"))
     print("figures written to", out, ":", sorted(os.listdir(out)))
 
 
