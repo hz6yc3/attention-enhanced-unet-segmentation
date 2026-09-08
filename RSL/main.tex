@@ -217,9 +217,6 @@ The modest size of the real benefit, about three Dice points from 106 unique syn
 
 A public GAN-expanded road dataset advertised as 1{,}003 synthetic images contains 106, each repeated twelve times. Under a leakage-free, compute-matched, 15-replicate protocol those images improve Attention U-Net road segmentation on real held-out imagery by 3.3 Dice points, the repeated copies reduce that benefit, and validating on the pooled set inflates it sevenfold. Committee-disagreement selection of synthetic images fails on the duplicated set, where it collapses to a handful of unique images, but after deduplication the 50 most-disputed images match the full unique set, beat random and agreement-based selection, and halve seed sensitivity. Deduplicating synthetic sets, evaluating on real images only, and selecting synthetic images by committee disagreement should be default practice for GAN-expanded remote-sensing datasets.
 
-\section*{Acknowledgments}
-The author acknowledges the use of a generative AI assistant (Claude, Anthropic) for writing assistance and for help with the experimental pipeline code, as detailed in the declaration below.
-
 \section*{Disclosure statement}
 The author reports there are no competing interests to declare.
 
@@ -227,7 +224,7 @@ The author reports there are no competing interests to declare.
 No funding was obtained for the reported work.
 
 \section*{Declaration of generative AI use}
-Generative AI (Claude, Anthropic) was used to assist in writing the experimental pipeline code and in language editing of this manuscript. It was not used to generate data, results or references. The study design, execution, analysis and conclusions are the author's own, and all reported numbers were produced by the released code.
+A generative AI assistant (Claude, Anthropic) was used for language editing of this manuscript and to assist in writing the experimental pipeline code. It was not used to generate data, results, or references; all reported numbers were produced by the released code.
 
 \section*{Data availability statement}
 The dataset is publicly available on Kaggle \citep{sanadalali}. Code, the frozen split file, committee scores and all per-run result files that support the findings are openly available at \repourl.
