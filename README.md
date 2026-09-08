@@ -136,6 +136,9 @@ Conditions per (arch, fold, seed): `real` (64 real only), `all` (real + 1,003 sy
 `antifiltered` (real + k highest-disagreement synthetic, a sanity control).
 
 ```bash
+# 0. get the dataset (not redistributed here): Kaggle API token in ~/.kaggle/kaggle.json, then
+python scripts/get_data.py
+
 # 1. create the frozen splits and inspect them
 python -m utils.splits --data data
 
