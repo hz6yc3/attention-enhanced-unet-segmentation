@@ -1,0 +1,16 @@
+Dear Editor,
+
+Please consider the enclosed manuscript, "Selecting GAN-Synthetic Training Images by Committee Disagreement for Small-Data Satellite Road Segmentation", for publication in Remote Sensing Letters as a Research Letter.
+
+The manuscript studies a public satellite road-segmentation dataset that ships 100 annotated images together with 1,003 Pix2Pix-generated image–mask pairs, and asks three practical questions: how much of the synthetic set is genuinely new content, how much it improves road extraction on real held-out imagery once evaluation is free of leakage, and whether the useful synthetic images can be selected in advance. Its contributions are (i) a file-level audit showing that the 1,003 synthetic files contain only 106 distinct images, each repeated about twelve times; (ii) a leakage-free, compute-matched evaluation with 15 paired replicates per condition, which measures the real benefit of the synthetic data at about three Dice points and shows that validating on the pooled real–synthetic set inflates that benefit roughly sevenfold; and (iii) a committee-disagreement selection rule which, after deduplication, matches the full synthetic set with less than half the images while giving the most stable training.
+
+In the interest of transparency: an earlier version of this work was submitted to a conference and rejected. Reviewers objected that the results were reported on a validation split drawn from the pooled real and synthetic images, that only three seeds were used, and that the synthetic set might be artificially repeated. The present manuscript is a full re-execution under a protocol that addresses each point, and those objections turned out to be the source of the manuscript's main findings. The earlier version has not been published or posted as a preprint.
+
+All 150 training runs, the frozen data splits, the committee scores and the code needed to regenerate every number and figure are released in a public repository (the URL is withheld in the anonymous manuscript and given in the version with author details). The manuscript is not under consideration elsewhere. There are no competing interests and no funding to declare. A generative AI assistant was used for code and language editing, as declared in the manuscript.
+
+Thank you for your consideration.
+
+Anantharaman Janakiraman
+Department of Electrical Engineering and Computer Science
+Florida Atlantic University, Boca Raton, FL, USA
+ajanakiraman2024@fau.edu | ORCID 0009-0008-3641-0788
