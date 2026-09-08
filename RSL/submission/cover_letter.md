@@ -1,6 +1,6 @@
 Dear Editor,
 
-Please consider the enclosed manuscript, "Selecting GAN-Synthetic Training Images by Committee Disagreement for Small-Data Satellite Road Segmentation", for publication in Remote Sensing Letters as a Research Letter.
+Please consider the enclosed manuscript, "Selecting GAN-Synthetic Training Images by Committee Disagreement for Small-Data Satellite Road Segmentation", for publication in Remote Sensing Letters.
 
 The manuscript studies a public satellite road-segmentation dataset that ships 100 annotated images together with 1,003 Pix2Pix-generated image–mask pairs, and asks three practical questions: how much of the synthetic set is genuinely new content, how much it improves road extraction on real held-out imagery once evaluation is free of leakage, and whether the useful synthetic images can be selected in advance. Its contributions are (i) a file-level audit showing that the 1,003 synthetic files contain only 106 distinct images, each repeated about twelve times; (ii) a leakage-free, compute-matched evaluation with 15 paired replicates per condition, which measures the real benefit of the synthetic data at about three Dice points and shows that validating on the pooled real–synthetic set inflates that benefit roughly sevenfold; and (iii) a committee-disagreement selection rule which, after deduplication, matches the full synthetic set with less than half the images while giving the most stable training.
 
