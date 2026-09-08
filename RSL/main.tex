@@ -25,6 +25,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{setspace}
 \usepackage[round]{natbib}
+\bibpunct{(}{)}{,}{a}{}{,}
 \singlespacing
 \newcommand{\tbd}[1]{\textcolor{red}{[#1]}}
 % Build the anonymous review copy with:  pdflatex "\def\anonymous{1}\input{main.tex}"  (see main_anon.tex)
@@ -33,9 +34,11 @@
   \newcommand{\authorblock}{Anonymous author}
 \else
   \newcommand{\repourl}{\url{https://github.com/hz6yc3/attention-enhanced-unet-segmentation}}
-  \newcommand{\authorblock}{Anantharaman Janakiraman\\[2pt]
-    \normalsize Department of Electrical Engineering and Computer Science, Florida Atlantic University, Boca Raton, FL, USA\\
-    \normalsize Corresponding author: \texttt{ajanakiraman2024@fau.edu} \quad ORCID: \href{https://orcid.org/0009-0008-3641-0788}{0009-0008-3641-0788}}
+  \newcommand{\authorblock}{Anantharaman Janakiraman\\[3pt]
+    \normalsize Department of Electrical Engineering and Computer Science\\
+    \normalsize Florida Atlantic University, Boca Raton, FL, USA\\[3pt]
+    \normalsize Corresponding author: \texttt{ajanakiraman2024@fau.edu}\\
+    \normalsize ORCID: \href{https://orcid.org/0009-0008-3641-0788}{0009-0008-3641-0788}}
 \fi
 
 \title{Selecting GAN-Synthetic Training Images by Committee Disagreement for Small-Data Satellite Road Segmentation}
@@ -116,7 +119,8 @@ Two families of conditions are compared, all with the 64 real training images. O
 \centering
 \caption{Test results on the 20 held-out real images (mean $\pm$ SD over 15 fold$\times$seed replicates). ``Unique'' is the mean number of distinct synthetic images present in the training set. Seed sensitivity is the SD across seeds averaged over folds. All runs use 64 real images and an identical 1{,}200-step budget.}
 \label{tab:main}
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrrr}
 \toprule
 Set & Condition & Files & Unique & Dice & IoU & Seed sens. \\
@@ -141,7 +145,8 @@ Deduplicated & + all-unique     & 106     & 106  & $\mathbf{0.839 \pm 0.014}$ & 
 \centering
 \caption{Paired comparisons of test Dice over the 15 matched (fold, seed) replicates. $\Delta$ is the mean difference $a-b$ with 95\% confidence interval; ``wins'' counts replicates in which $a$ exceeds $b$. Numbers in parentheses are files (duplicated set) or unique images (deduplicated set, marked $\dagger$).}
 \label{tab:paired}
-\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrr}
 \toprule
 $a$ & $b$ & $\Delta$ Dice & Wins & Wilcoxon $p$ & Paired $t$ $p$ \\
@@ -187,7 +192,7 @@ middle band (50)$^\dagger$   & random (50)$^\dagger$   & $-0.015 \pm 0.011$ & 4/
 
 \paragraph{Evaluation on the pooled set inflates the benefit sevenfold.} Under the earlier pooled-validation protocol, the same architecture and data showed a gain of 15.1 Dice points from synthetic expansion (mean validation Dice 0.810 to 0.961 over three seeds). Under the real-only protocol the gain is 2.2 points for the same 1{,}003 files. Two mechanisms combine: synthetic images are easier than real ones, having perfect label alignment and no annotation noise, and because each synthetic image appears twelve times, a validation split drawn from the pool almost always contains copies of images that are also in the training split, so the pooled protocol partly measures memorization.
 
-\paragraph{On the duplicated set, committee selection collapses diversity and loses to random.} Because identical files receive identical scores, ranking by committee disagreement selects whole groups of copies: the 250 most-agreed files contain 26 unique images (range 24--27) and so do the 250 most-disputed, against 81 for a random draw. Both selections lose to random in nearly every replicate ($\Delta=-0.029$ and $-0.033$ Dice, 0/15 and 1/15 wins, $p<10^{-3}$) and neither differs significantly from using no synthetic data at all (Figure~\ref{fig:paired}, left). This is the realistic setting for a practitioner who downloads a GAN-expanded dataset and applies a per-image score, and the lesson is that any such score must be applied after deduplication.
+\paragraph{On the duplicated set, committee selection collapses diversity and loses to random.} Because identical files receive identical scores, ranking by committee disagreement selects whole groups of copies: the 250 most-agreed files contain 26 unique images (range 24--27) and so do the 250 most-disputed, against 81 for a random draw. Both selections lose to random in nearly every replicate (mean paired difference $\Delta=-0.029$ and $-0.033$ Dice, 0/15 and 1/15 wins, $p<10^{-3}$) and neither differs significantly from using no synthetic data at all (Figure~\ref{fig:paired}, left). This is the realistic setting for a practitioner who downloads a GAN-expanded dataset and applies a per-image score, and the lesson is that any such score must be applied after deduplication.
 
 \paragraph{After deduplication, disagreement selection works.} With one file per unique image, the ordering reverses (Figure~\ref{fig:conditions}, bottom; Figure~\ref{fig:paired}, right). The 50 most-disputed unique images reach Dice 0.839, indistinguishable from the full set of 106 ($\Delta=-0.001$, $p=0.8$) while using less than half of it, above a random 50 in 11 of 15 replicates ($\Delta=+0.008$; Wilcoxon $p=0.048$, paired $t$ $p=0.07$), above the 50 most-agreed images by 2.6 points (14/15, $p<10^{-3}$), and above real-only data in every replicate. They also give the lowest seed sensitivity of any condition (0.007, half that of real-only training). The 50 most-agreed images and the middle band are both significantly worse than random and add little over real data alone. This is the classical query-by-committee ordering \citep{seung1992}: the images on which independently trained models disagree are the informative ones.
 
@@ -198,7 +203,7 @@ middle band (50)$^\dagger$   & random (50)$^\dagger$   & $-0.015 \pm 0.011$ & 4/
 \label{fig:scores}
 \end{figure}
 
-\paragraph{What committee disagreement measures.} Figure~\ref{fig:scores} and the per-fold diagnostics show that committee disagreement is strongly correlated with label disagreement (Spearman $\rho=0.86$--$0.89$ across folds): the images the committee disputes are those whose masks contain road structure that real-trained models do not yet predict. Given the deduplicated results, this is a signal of informativeness rather than of label noise. Disagreement is also negatively correlated with road density ($\rho=-0.25$ to $-0.47$), so the most-disputed subset under-represents dense-road scenes (mean road fraction 0.14--0.17 versus 0.20 for real data) and the most-agreed subset over-represents them (0.22--0.25); the most-disputed images win despite this shift. The ranking is a stable property of the images: on average 67\% of the 250 most-agreed files coincide across committees trained on different real folds. Why, then, did the most-disputed selection fail on the duplicated set? There it consisted of 26 unique images repeated about ten times each, and the deduplicated experiment shows separately that repetition of a fixed set is harmful under a matched budget (all-unique versus all). Narrow content plus heavy repetition, not the disagreement criterion, explains the earlier loss.
+\paragraph{What committee disagreement measures.} Figure~\ref{fig:scores} and the per-fold diagnostics show that committee disagreement is strongly correlated with label disagreement (Spearman rank correlation coefficient $\rho=0.86$--$0.89$ across folds): the images the committee disputes are those whose masks contain road structure that real-trained models do not yet predict. Given the deduplicated results, this is a signal of informativeness rather than of label noise. Disagreement is also negatively correlated with road density ($\rho=-0.25$ to $-0.47$), so the most-disputed subset under-represents dense-road scenes (mean road fraction 0.14--0.17 versus 0.20 for real data) and the most-agreed subset over-represents them (0.22--0.25); the most-disputed images win despite this shift. The ranking is a stable property of the images: on average 67\% of the 250 most-agreed files coincide across committees trained on different real folds. Why, then, did the most-disputed selection fail on the duplicated set? There it consisted of 26 unique images repeated about ten times each, and the deduplicated experiment shows separately that repetition of a fixed set is harmful under a matched budget (all-unique versus all). Narrow content plus heavy repetition, not the disagreement criterion, explains the earlier loss.
 
 \section{Discussion}
 
@@ -227,32 +232,31 @@ Generative AI (Claude, Anthropic) was used to assist in writing the experimental
 \section*{Data availability statement}
 The dataset is publicly available on Kaggle \citep{sanadalali}. Code, the frozen split file, committee scores and all per-run result files that support the findings are openly available at \repourl.
 
-\bibliographystyle{apalike}
 \begin{thebibliography}{99}
 
-\bibitem[Barz and Denzler, 2020]{barz2020} Barz, B. and Denzler, J. (2020). Do we train on test data? Purging CIFAR of near-duplicates. \emph{Journal of Imaging}, 6(6):41.
+\bibitem[Barz and Denzler(2020)]{barz2020} Barz, B., and J. Denzler. 2020. ``Do We Train on Test Data? Purging CIFAR of Near-Duplicates.'' \emph{Journal of Imaging} 6 (6): 41. \url{https://doi.org/10.3390/jimaging6060041}.
 
-\bibitem[Batra et al., 2019]{batra2019} Batra, A., Singh, S., Pang, G., Basu, S., Jawahar, C. V., and Paluri, M. (2019). Improved road connectivity by joint learning of orientation and segmentation. In \emph{Proc. IEEE/CVF Conf. Computer Vision and Pattern Recognition (CVPR)}.
+\bibitem[Batra et al.(2019)]{batra2019} Batra, A., S. Singh, G. Pang, S. Basu, C. V. Jawahar, and M. Paluri. 2019. ``Improved Road Connectivity by Joint Learning of Orientation and Segmentation.'' In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}. Long Beach, CA.
 
-\bibitem[Buslaev et al., 2020]{buslaev2020} Buslaev, A., Iglovikov, V. I., Khvedchenya, E., Parinov, A., Druzhinin, M., and Kalinin, A. A. (2020). Albumentations: Fast and flexible image augmentations. \emph{Information}, 11(2):125.
+\bibitem[Buslaev et al.(2020)]{buslaev2020} Buslaev, A., V. I. Iglovikov, E. Khvedchenya, A. Parinov, M. Druzhinin, and A. A. Kalinin. 2020. ``Albumentations: Fast and Flexible Image Augmentations.'' \emph{Information} 11 (2): 125. \url{https://doi.org/10.3390/info11020125}.
 
-\bibitem[Goodfellow et al., 2014]{goodfellow2014} Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., and Bengio, Y. (2014). Generative adversarial nets. In \emph{Advances in Neural Information Processing Systems 27}, pages 2672--2680.
+\bibitem[Goodfellow et al.(2014)]{goodfellow2014} Goodfellow, I., J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley, S. Ozair, A. Courville, and Y. Bengio. 2014. ``Generative Adversarial Nets.'' In \emph{Advances in Neural Information Processing Systems 27 (NIPS 2014)}, 2672--2680.
 
-\bibitem[Isola et al., 2017]{isola2017} Isola, P., Zhu, J.-Y., Zhou, T., and Efros, A. A. (2017). Image-to-image translation with conditional adversarial networks. In \emph{Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR)}, pages 1125--1134.
+\bibitem[Isola et al.(2017)]{isola2017} Isola, P., J.-Y. Zhu, T. Zhou, and A. A. Efros. 2017. ``Image-to-Image Translation with Conditional Adversarial Networks.'' In \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 1125--1134.
 
-\bibitem[Oktay et al., 2018]{oktay2018} Oktay, O., Schlemper, J., Le Folgoc, L., Lee, M., Heinrich, M., Misawa, K., Mori, K., McDonagh, S., Hammerla, N. Y., Kainz, B., Glocker, B., and Rueckert, D. (2018). Attention U-Net: Learning where to look for the pancreas. In \emph{Medical Imaging with Deep Learning (MIDL)}. arXiv:1804.03999.
+\bibitem[Oktay et al.(2018)]{oktay2018} Oktay, O., J. Schlemper, L. Le Folgoc, M. Lee, M. Heinrich, K. Misawa, K. Mori, et al. 2018. ``Attention U-Net: Learning Where to Look for the Pancreas.'' In \emph{Medical Imaging with Deep Learning (MIDL)}. arXiv:1804.03999.
 
-\bibitem[Ronneberger et al., 2015]{ronneberger2015} Ronneberger, O., Fischer, P., and Brox, T. (2015). U-Net: Convolutional networks for biomedical image segmentation. In \emph{Medical Image Computing and Computer-Assisted Intervention (MICCAI)}, LNCS 9351, pages 234--241.
+\bibitem[Ronneberger et al.(2015)]{ronneberger2015} Ronneberger, O., P. Fischer, and T. Brox. 2015. ``U-Net: Convolutional Networks for Biomedical Image Segmentation.'' In \emph{Medical Image Computing and Computer-Assisted Intervention -- MICCAI 2015}, Lecture Notes in Computer Science 9351, 234--241. Cham: Springer. \url{https://doi.org/10.1007/978-3-319-24574-4_28}.
 
-\bibitem[Settles, 2009]{settles2009} Settles, B. (2009). Active learning literature survey. Computer Sciences Technical Report 1648, University of Wisconsin--Madison.
+\bibitem[sanadalali(n.d.)]{sanadalali} sanadalali. n.d. ``Satellite Images for Road Segmentation.'' Kaggle dataset. Accessed September 6, 2026. \url{https://www.kaggle.com/datasets/sanadalali/satellite-images-for-road-segmentation}.
 
-\bibitem[sanadalali, n.d.]{sanadalali} sanadalali (n.d.). Satellite images for road segmentation [dataset]. Kaggle. \url{https://www.kaggle.com/datasets/sanadalali/satellite-images-for-road-segmentation} (accessed 6 September 2026).
+\bibitem[Settles(2009)]{settles2009} Settles, B. 2009. \emph{Active Learning Literature Survey}. Computer Sciences Technical Report 1648. Madison, WI: University of Wisconsin--Madison.
 
-\bibitem[Seung et al., 1992]{seung1992} Seung, H. S., Opper, M., and Sompolinsky, H. (1992). Query by committee. In \emph{Proc. 5th Annual Workshop on Computational Learning Theory (COLT)}, pages 287--294.
+\bibitem[Seung et al.(1992)]{seung1992} Seung, H. S., M. Opper, and H. Sompolinsky. 1992. ``Query by Committee.'' In \emph{Proceedings of the Fifth Annual Workshop on Computational Learning Theory (COLT)}, 287--294. New York: ACM. \url{https://doi.org/10.1145/130385.130417}.
 
-\bibitem[Zhang et al., 2018]{zhang2018} Zhang, Z., Liu, Q., and Wang, Y. (2018). Road extraction by deep residual U-Net. \emph{IEEE Geoscience and Remote Sensing Letters}, 15(5):749--753.
+\bibitem[Zhang et al.(2018)]{zhang2018} Zhang, Z., Q. Liu, and Y. Wang. 2018. ``Road Extraction by Deep Residual U-Net.'' \emph{IEEE Geoscience and Remote Sensing Letters} 15 (5): 749--753. \url{https://doi.org/10.1109/LGRS.2018.2802944}.
 
-\bibitem[Zhou et al., 2018]{zhou2018} Zhou, L., Zhang, C., and Wu, M. (2018). D-LinkNet: LinkNet with pretrained encoder and dilated convolution for high resolution satellite imagery road extraction. In \emph{Proc. IEEE Conf. Computer Vision and Pattern Recognition Workshops (CVPRW)}.
+\bibitem[Zhou et al.(2018)]{zhou2018} Zhou, L., C. Zhang, and M. Wu. 2018. ``D-LinkNet: LinkNet with Pretrained Encoder and Dilated Convolution for High Resolution Satellite Imagery Road Extraction.'' In \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)}. Salt Lake City, UT.
 
 \end{thebibliography}
 
