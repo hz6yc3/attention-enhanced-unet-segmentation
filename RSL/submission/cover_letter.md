@@ -13,4 +13,4 @@ Thank you for your consideration.
 Anantharaman Janakiraman
 Department of Electrical Engineering and Computer Science
 Florida Atlantic University, Boca Raton, FL, USA
-ajanakiraman2024@fau.edu | ORCID 0009-0008-3641-0788
+anantharaman.j@gmail.com | ORCID 0009-0008-3641-0788
